@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ERP - Inicio</title>
+    <link rel="stylesheet" href="static/css/styles.css">
+  </head>
+<body>
+    
+    <div class="app-root">
+
+    <section class="login-screen">
+      
+      <div class="login-card">
+        <div class="login-brand">
+          <div class="login-icon" aria-hidden="true">
+            <i data-lucide="lock"></i>
+          </div>
+          <h1>Lo Esencial ERP</h1>
+          <p>Ingresa tus credenciales</p>
+        </div>
+
+        <form class="login-form" id="formLogin">
+          <div class="input-group">
+            <span class="input-icon" aria-hidden="true"><i data-lucide="user"></i></span>
+            <input type="text" id="txtUsuario" placeholder="Usuario" required/>
+          </div>
+          <div class="input-group">
+            <span class="input-icon" aria-hidden="true"><i data-lucide="key-round"></i></span>
+            <input type="password" id="txtContraseña" placeholder="Contraseña" required/>
+          </div>
+          <p id="login-error" class="form-error" aria-live="polite"></p>
+          <button type="submit" id="btnIngresar" class="btn btn-primary" type="button">
+            Ingresar
+          </button>
+        </form>
+
+    </section>
+    </div>
+
+    <div id="toast-container" class="toastFixed"></div>
+
+    <script src="static/js/APIs_Login.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+</body>
+</html>

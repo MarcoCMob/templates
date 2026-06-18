@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ERP - Punto de Venta</title>
+  <link rel="stylesheet" href="static/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+
+<body>
+  <div class="app-root">
+    <section id="erp-app" class="erp-app">
+
+      <!-- SIDEBAR -->
+      <aside class="sidebar collapsed" id="mainSidebar">
+        <div class="sidebar-header">
+          <button class="btn-hamburger" id="btnHamburger" title="Toggle menú">
+            <i class="fas fa-bars"></i>
+          </button>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a id="navSeccionVenta" class="nav-item active" href="venta.html" title="Punto de Venta">
+            <i class="fas fa-cash-register"></i>
+            <span class="nav-item-label">Punto de Venta</span>
+          </a>
+          <a id="navSeccionCaja" class="nav-item" href="caja.html" title="Caja">
+            <i class="fas fa-wallet"></i>
+            <span class="nav-item-label">Caja</span>
+          </a>
+          <a id="navSeccionInventario" class="nav-item" href="inventario.html" title="Inventario">
+            <i class="fas fa-boxes-stacked"></i>
+            <span class="nav-item-label">Inventario</span>
+          </a>
+          <a id="navSeccionCatalogo" class="nav-item" href="catalogo/catalogoProducto.html" title="Catálogo">
+            <i class="fas fa-tag"></i>
+            <span class="nav-item-label">Catálogo</span>
+          </a>
+          <a id="navSeccionUsuario" class="nav-item" href="usuario.html" title="Usuarios">
+            <i class="fas fa-users"></i>
+            <span class="nav-item-label">Usuarios</span>
+          </a>
+          <a id="navSeccionConfiguracion" class="nav-item" href="dashboard.html" title="Dashboard">
+            <i class="fas fa-chart-bar"></i>
+            <span class="nav-item-label">Dashboard</span>
+          </a>
+        </nav>
+
+      </aside>
+
+      <div class="main-content">
+        <div class="page-brand">
+          <div class="brand-icon" aria-hidden="true"><i class="fas fa-utensils"></i></div>
+          <div class="page-brand-text">
+            <h2>Lo Esencial</h2>
+            <p>ERP Broasteria</p>
+          </div>
+          <!-- USER -->
+          <div class="topbar-user" id="topbarUser">
+            <button class="topbar-user-btn" id="topbarUserBtn">
+              <div class="topbar-user-avatar" id="topbarAvatar">A</div>
+              <div class="topbar-user-info">
+                <span class="topbar-user-name" id="topbarNombre">Usuario</span>
+                <span class="topbar-user-role" id="topbarRol">Rol</span>
+              </div>
+              <i class="fas fa-chevron-down topbar-user-chevron"></i>
+            </button>
+            <div class="topbar-user-dropdown" id="topbarDropdown">
+              <div class="topbar-dropdown-divider"></div>
+              <button class="topbar-dropdown-item danger" id="btnCerrarSesion">
+                <i class="fas fa-right-from-bracket"></i>
+                Cerrar Sesión
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- TOPBAR -->
+        <header class="topbar">
+          <h2>Punto de Venta</h2>
+          <div class="topbar-right">
+            <p id="today-date"></p>
+          </div>
+        </header>
+
+        <main class="content-area">
+          <section class="module active">
+            <div class="module-header">
+              <div class="tab-row">
+                <button class="tab active" data-tab="pos-salon" id="btnTabLocal"><i class="fas fa-chair"
+                    style="margin-right:6px;"></i>Salón</button>
+                <button class="tab" data-tab="pos-llevar" id="btnTabLlevar"><i class="fas fa-shopping-bag"
+                    style="margin-right:6px;"></i>Para Llevar</button>
+                <button class="tab" data-tab="pos-delivery" id="btnTabDelivery"><i class="fas fa-truck"
+                    style="margin-right:6px;"></i>Delivery</button>
+                <button class="tab" data-tab="pos-espera" id="btnTabEspera"><i class="fas fa-hourglass-half"
+                    style="margin-right:6px;"></i>En Espera</button>
+              </div>
+            </div>
+            <div class="tab-content active" id="pos-salon">
+              <div class="card card-mesa-manager">
+                <div class="mesa-manager-header">
+                  <h3>Mapa de Mesas</h3>
+                  <div class="catalog-actions">
+                    <button class="btn btn-primary" id="btnAgregarMesa" type="button">
+                      <i class="fas fa-plus"></i> Agregar Mesa
+                    </button>
+                    <button class="btn btn-primary" id="btnEliminarMesa" type="button">
+                      <i class="fas fa-trash-can"></i> Eliminar Mesa
+                    </button>
+                  </div>
+                </div>
+                <div class="table-grid" id="mesa-grid"></div>
+              </div>
+              <div id="divMesaPedidos" class="split-layout hidden">
+                <div class="card">
+                  <div class="mesa-header">
+                    <div class="mesa-meta">
+                      <p class="muted">Mesa seleccionada</p>
+                      <h3 id="mesa-selected">Mesa</h3>
+                    </div>
+                    <span class="badge" id="mesa-estado">Libre</span>
+                  </div>
+                  <form class="inline-form">
+                    <input type="hidden" />
+                    <div class="form-grid">
+                      <label class="field">
+                        <span>Producto</span>
+                        <select id="comboProductoMesa">
+                          <option value="" disabled selected>Seleccione un producto</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>Cantidad</span>
+                        <input id="txtCantidadMesa" type="number" min="1" placeholder="1" />
+                      </label>
+                    </div>
+                    <div class="form-actions">
+                      <button class="btn btn-primary" id="btnAgregarPedidoMesa" type="submit">Agregar pedido</button>
+                      <button class="btn btn-primary hidden" id="btnOcuparMesa" type="submit">Marcar mesa
+                        ocupada</button>
+                    </div>
+                  </form>
+                </div>
+                <div class="card">
+                  <h3>Pedidos Agregados</h3>
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Pago</th>
+                        <th>Pago Total</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbodyPedidosMesaAgregados"></tbody>
+                    <tfoot id="tfootTotalPedidoMesa" class="hidden">
+                      <tr>
+                        <td colspan="3"><strong>Total</strong></td>
+                        <td><strong id="txtTotalPedidoMesa">S/ 0.00</strong></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="tab-content" id="pos-llevar">
+              <div id="divPedidoLlevar" data-tipo-pedido="LLEVAR"></div>
+            </div>
+            <div class="tab-content" id="pos-delivery">
+              <div id="divPedidoDelivery" data-tipo-pedido="DELIVERY"></div>
+            </div>
+            <div class="tab-content" id="pos-espera">
+              <div class="card">
+                <h3>Pedidos en Espera</h3>
+                <p class="muted" id="txtEsperaVacia">No hay pedidos en espera.</p>
+                <table class="data-table" id="tablaEspera">
+                  <thead>
+                    <tr>
+                      <th>Tipo</th>
+                      <th>Productos</th>
+                      <th>Total</th>
+                      <th>Hora / Fecha</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyEspera"></tbody>
+                </table>
+              </div>
+            </div>
+            <div id="divPedidoRegistro" class="split-layout hidden">
+              <div class="card">
+                <h3>Registrar Pedido</h3>
+                <form class="inline-form">
+                  <input type="hidden" name="canal" id="txtPedidoCanal" />
+                  <div class="form-grid">
+                    <label class="field">
+                      <span>Producto</span>
+                      <select id="comboProductoPedido">
+                        <option value="" disabled selected>Seleccione un producto</option>
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span>Cantidad</span>
+                      <input id="txtCantidadPedido" type="number" min="1" placeholder="1" />
+                    </label>
+                  </div>
+                  <div class="form-actions">
+                    <button class="btn btn-primary" type="button" id="btnAgregarPedido">Agregar al Pedido</button>
+                    <button class="btn btn-primary hidden" type="button" id="btnRegistrarPagoPedido">Registrar
+                      Pago</button>
+                    <button class="btn btn-primary-green hidden" type="button" id="btnEnviarAEspera"><i
+                        class="fas fa-hourglass-half"></i> Enviar a Espera</button>
+                  </div>
+                </form>
+              </div>
+              <div class="card">
+                <h3>Pedidos Agregados</h3>
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Producto</th>
+                      <th>Cantidad</th>
+                      <th>Pago</th>
+                      <th>Pago Total</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyPedidosAgregados"></tbody>
+                  <tfoot id="tfootTotalPedido" class="hidden">
+                    <tr>
+                      <td colspan="3"><strong>Total</strong></td>
+                      <td><strong id="txtTotalPedido">S/ 0.00</strong></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </section>
+  </div>
+
+  <!-- MODAL COBRO PEDIDO (LLEVAR/DELIVERY) -->
+  <div id="modal-cobro-pedido" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-icon" aria-hidden="true" style="background:rgba(249,115,22,0.15);color:var(--orange-500);">
+        <i class="fas fa-receipt" style="font-size:24px;"></i>
+      </div>
+      <h3>Cobrar Pedido</h3>
+      <p class="muted" id="tipo-pedido-label">Modalidad</p>
+      <div class="cobro-total" style="margin-bottom:1rem;">
+        <span>Total a Pagar</span>
+        <strong id="modal-pedido-total-monto">S/ 0.00</strong>
+      </div>
+      <form class="inline-form" id="formCobroPedido">
+        <div class="form-grid">
+          <label class="field">
+            <span>Método de pago</span>
+            <select id="comboMetodoPagoModal">
+              <option value="EFECTIVO">Efectivo</option>
+              <option value="TARJETA">Tarjeta</option>
+              <option value="YAPE">Yape</option>
+            </select>
+          </label>
+          <!-- Bloque efectivo (solo visible si se selecciona EFECTIVO) -->
+          <div id="efectivo-block-modal" class="field hidden">
+            <label class="field">
+              <span>Efectivo recibido</span>
+              <input id="inputEfectivoModal" type="number" min="0" step="0.01" placeholder="Ingrese monto recibido" />
+            </label>
+            <div style="align-self:end;margin-left:8px;">
+              <small class="muted">Vuelto: <strong id="vuelto-modal">S/ 0.00</strong></small>
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button id="btnConfirmarCompraPedido" class="btn btn-primary" type="button">Comprar</button>
+          <button id="btnCancelarCompraPedido" class="btn btn-muted" type="button">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL MESA OCUPADA -->
+  <div id="divModalMesaOcupada" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-icon" aria-hidden="true"><i class="fas fa-circle-question" style="font-size:24px;"></i></div>
+      <h3>Mesa ocupada</h3>
+      <p class="muted" id="mesa-ocupada-label">Mesa</p>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="btnMesaOcupadaAgregar">Agregar pedido</button>
+        <button class="btn btn-danger" id="btnMesaOcupadaCobrar">Cobrar</button>
+        <button class="btn btn-muted" id="btnMesaOcupadaCancel">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL COBRO MESA -->
+  <div id="cobro-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-icon" aria-hidden="true" style="background:rgba(249,115,22,0.15);color:var(--orange-500);">
+        <i class="fas fa-wallet" style="font-size:24px;"></i>
+      </div>
+      <h3>Cobro de mesa</h3>
+      <p class="muted" id="cobro-mesa-label">Mesa</p>
+      <div id="cobro-lista-detalles" class="list" style="margin-bottom:1rem;"></div>
+      <div class="cobro-total">
+        <span>Total</span>
+        <strong id="cobro-total-monto">S/ 0.00</strong>
+      </div>
+      <form class="inline-form" id="formCobroMesa">
+        <input type="hidden" id="cobro-mesa-input" />
+        <div class="form-grid">
+          <label class="field">
+            <span>Metodo de pago</span>
+            <select id="comboMetodoPagoCobro">
+              <option value="EFECTIVO">Efectivo</option>
+              <option value="TARJETA">Tarjeta</option>
+              <option value="YAPE">Yape</option>
+            </select>
+          </label>
+          <!-- Bloque efectivo (solo visible si se selecciona EFECTIVO) -->
+          <div id="efectivo-block-cobro" class="field hidden">
+            <label class="field">
+              <span>Efectivo recibido</span>
+              <input id="inputEfectivoCobro" type="number" min="0" step="0.01" placeholder="Ingrese monto recibido" />
+            </label>
+            <div style="align-self:end;margin-left:8px;">
+              <small class="muted">Vuelto: <strong id="vuelto-cobro">S/ 0.00</strong></small>
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button id="btnConfirmarCobro" class="btn btn-primary" type="button">Cobrar y liberar</button>
+          <button id="btnCancelarCobro" class="btn btn-muted" type="button">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL CAJA CERRADA -->
+  <div id="caja-cerrada-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-icon" aria-hidden="true"><i class="fas fa-lock" style="font-size:24px;"></i></div>
+      <h3>Caja cerrada</h3>
+      <p class="muted">No puedes ingresar al punto de venta hasta aperturar la caja.</p>
+      <div class="modal-actions">
+        <button class="btn btn-primary" type="button" id="caja-cerrada-ir"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL BOLETA GENERADA -->
+  <div id="modal-boleta" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-icon" aria-hidden="true" style="background:rgba(34,197,94,0.15);color:var(--green-500);">
+        <i class="fas fa-circle-check" style="font-size:24px;"></i>
+      </div>
+      <h3>¡Pago Exitoso!</h3>
+      <p class="muted">El pedido fue cobrado correctamente.</p>
+      <div class="form-actions" style="justify-content:center;margin-top:16px;">
+        <button id="btnDescargarBoleta" class="btn-boleta" type="button">
+          <i class="fas fa-file-pdf"></i>
+          Descargar Boleta
+        </button>
+        <button id="btnCerrarBoleta" class="btn btn-muted" type="button">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toastFixed"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="static/js/app.js"></script>
+  <script src="static/js/APIs_PuntoVenta.js"></script>
+  <script src="static/js/sidebar.js"></script>
+
+</body>
+
+</html>

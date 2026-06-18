@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ERP - Caja</title>
+  <link rel="stylesheet" href="static/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+
+<body>
+  <div class="app-root">
+    <section id="erp-app" class="erp-app">
+
+      <!-- SIDEBAR -->
+      <aside class="sidebar collapsed" id="mainSidebar">
+        <div class="sidebar-header">
+          <button class="btn-hamburger" id="btnHamburger" title="Toggle menú">
+            <i class="fas fa-bars"></i>
+          </button>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a id="navSeccionVenta" class="nav-item" href="venta.html" title="Punto de Venta">
+            <i class="fas fa-cash-register"></i>
+            <span class="nav-item-label">Punto de Venta</span>
+          </a>
+          <a id="navSeccionCaja" class="nav-item active" href="caja.html" title="Caja">
+            <i class="fas fa-wallet"></i>
+            <span class="nav-item-label">Caja</span>
+          </a>
+          <a id="navSeccionInventario" class="nav-item" href="inventario.html" title="Inventario">
+            <i class="fas fa-boxes-stacked"></i>
+            <span class="nav-item-label">Inventario</span>
+          </a>
+          <a id="navSeccionCatalogo" class="nav-item" href="catalogo/catalogoProducto.html" title="Catálogo">
+            <i class="fas fa-tag"></i>
+            <span class="nav-item-label">Catálogo</span>
+          </a>
+          <a id="navSeccionUsuario" class="nav-item" href="usuario.html" title="Usuarios">
+            <i class="fas fa-users"></i>
+            <span class="nav-item-label">Usuarios</span>
+          </a>
+          <a id="navSeccionConfiguracion" class="nav-item" href="dashboard.html" title="Dashboard">
+            <i class="fas fa-chart-bar"></i>
+            <span class="nav-item-label">Dashboard</span>
+          </a>
+        </nav>
+
+      </aside>
+
+      <div class="main-content">
+        <div class="page-brand">
+          <div class="brand-icon" aria-hidden="true"><i class="fas fa-utensils"></i></div>
+          <div class="page-brand-text">
+            <h2>Lo Esencial</h2>
+            <p>ERP Broasteria</p>
+          </div>
+          <!-- USER -->
+          <div class="topbar-user" id="topbarUser">
+              <button class="topbar-user-btn" id="topbarUserBtn">
+                <div class="topbar-user-avatar" id="topbarAvatar">A</div>
+                <div class="topbar-user-info">
+                  <span class="topbar-user-name" id="topbarNombre">Usuario</span>
+                  <span class="topbar-user-role" id="topbarRol">Rol</span>
+                </div>
+                <i class="fas fa-chevron-down topbar-user-chevron"></i>
+              </button>
+              <div class="topbar-user-dropdown" id="topbarDropdown">
+                <div class="topbar-dropdown-divider"></div>
+                <button class="topbar-dropdown-item danger" id="btnCerrarSesion">
+                  <i class="fas fa-right-from-bracket"></i>
+                  Cerrar Sesión
+                </button>
+              </div>
+          </div>
+        </div>
+        <!-- TOPBAR -->
+        <header class="topbar">
+          <h2>Caja</h2>
+          <div class="topbar-right">
+            <p id="today-date"></p>
+          </div>
+        </header>
+
+        <main class="content-area">
+          <section class="module active">
+            <div class="split-layout">
+              <div class="card">
+                <h3>Estado de Caja</h3>
+                <div id="divCajaTurnoAbierto" class="hidden">
+                  <p class="muted">Turno Abierto</p>
+                  <div class="stat-card">
+                    <div>
+                      <p>Monto actual</p>
+                      <h4 id="infoMontoActual" class="text-success">S/ 0.00</h4>
+                      <p id="infoMontoInicial" class="muted monto-inicial">Monto inicial: S/ 0.00</p>
+                    </div>
+                  </div>
+                  <form class="inline-form">
+                    <div class="form-grid">
+                      <label class="field">
+                        <span>Concepto</span>
+                        <input type="text" id="txtConcepto" placeholder="Ej. Compra de hielo" />
+                      </label>
+                      <label class="field">
+                        <span>Tipo</span>
+                        <select id="TipoMovimiento">
+                          <option value="INGRESO">Ingreso</option>
+                          <option value="EGRESO">Egreso</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>Metodo</span>
+                        <select id="TipoPago">
+                          <option value="EFECTIVO">Efectivo</option>
+                          <option value="TARJETA">Tarjeta</option>
+                          <option value="YAPE">Yape</option>
+                        </select>
+                      </label>
+                      <label class="field">
+                        <span>Monto</span>
+                        <input type="text" id="txtMonto" step="0.1" min="0" placeholder="Ej. 15.00" />
+                      </label>
+                    </div>
+                    <div class="form-actions">
+                      <button class="btn btn-primary" id="btnRegistrarMovimiento" type="submit">Registrar movimiento</button>
+                    </div>
+                    <div class="form-actions form-actions-end">
+                      <form>
+                        <button class="btn btn-danger" id="btnCerrarTurno" type="submit">Cerrar Turno</button>
+                      </form>
+                    </div>
+                  </form>
+                </div>
+                <div id="divCajaTurnoCerrado" class="">
+                  <p class="muted">Turno Cerrado</p>
+                  <div class="stat-card">
+                    <div>
+                      <p>Ultimo monto</p>
+                      <p class="muted" id="fechaUltimoMonto"></p>
+                      <h4 class="text-info" id="infoUltimoMonto">S/ 0.00</h4>
+                    </div>
+                  </div>
+                  <form class="inline-form">
+                    <div class="form-grid">
+                      <label class="field">
+                        <span>Nuevo monto inicial</span>
+                        <input type="number" id="txtMontoInicial" step="0.1" min="0" placeholder="Ej. 100.00" />
+                      </label>
+                    </div>
+                    <div class="form-actions">
+                      <button id="btnAbrirTurno" class="btn btn-primary" type="submit">Abrir Turno</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+              <div class="card">
+                <h3>Movimientos del Turno</h3>
+                <div id="divListMovimientos" class="list"></div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast-container" class="toastFixed"></div>
+
+  <script src="static/js/app.js"></script>
+  <script src="static/js/APIs_Caja.js"></script>
+  <script src="static/js/sidebar.js"></script>
+
+</body>
+</html>

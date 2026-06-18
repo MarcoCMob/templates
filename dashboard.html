@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ERP - Dashboard</title>
+  <link rel="stylesheet" href="static/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+
+<body>
+  <div class="app-root">
+    <section id="erp-app" class="erp-app">
+
+      <!-- SIDEBAR -->
+      <aside class="sidebar collapsed" id="mainSidebar">
+        <div class="sidebar-header">
+          <button class="btn-hamburger" id="btnHamburger" title="Toggle menú">
+            <i class="fas fa-bars"></i>
+          </button>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a class="nav-item" href="venta.html" title="Punto de Venta">
+            <i class="fas fa-cash-register"></i>
+            <span class="nav-item-label">Punto de Venta</span>
+          </a>
+          <a class="nav-item" href="caja.html" title="Caja">
+            <i class="fas fa-wallet"></i>
+            <span class="nav-item-label">Caja</span>
+          </a>
+          <a class="nav-item" href="inventario.html" title="Inventario">
+            <i class="fas fa-boxes-stacked"></i>
+            <span class="nav-item-label">Inventario</span>
+          </a>
+          <a class="nav-item" href="catalogo/catalogoProducto.html" title="Catálogo">
+            <i class="fas fa-tag"></i>
+            <span class="nav-item-label">Catálogo</span>
+          </a>
+          <a class="nav-item" href="usuario.html" title="Usuarios">
+            <i class="fas fa-users"></i>
+            <span class="nav-item-label">Usuarios</span>
+          </a>
+          <a class="nav-item active" href="dashboard.html" title="Dashboard">
+            <i class="fas fa-chart-bar"></i>
+            <span class="nav-item-label">Dashboard</span>
+          </a>
+        </nav>
+
+      </aside>
+
+      <div class="main-content">
+        <div class="page-brand">
+          <div class="brand-icon" aria-hidden="true"><i class="fas fa-utensils"></i></div>
+          <div class="page-brand-text">
+            <h2>Lo Esencial</h2>
+            <p>ERP Broasteria</p>
+          </div>
+          <!-- USER -->
+          <div class="topbar-user" id="topbarUser">
+              <button class="topbar-user-btn" id="topbarUserBtn">
+                <div class="topbar-user-avatar" id="topbarAvatar">A</div>
+                <div class="topbar-user-info">
+                  <span class="topbar-user-name" id="topbarNombre">Usuario</span>
+                  <span class="topbar-user-role" id="topbarRol">Rol</span>
+                </div>
+                <i class="fas fa-chevron-down topbar-user-chevron"></i>
+              </button>
+              <div class="topbar-user-dropdown" id="topbarDropdown">
+                <div class="topbar-dropdown-divider"></div>
+                <button class="topbar-dropdown-item danger" id="btnCerrarSesion">
+                  <i class="fas fa-right-from-bracket"></i>
+                  Cerrar Sesión
+                </button>
+              </div>
+          </div>
+        </div>
+
+        <!-- TOPBAR -->
+        <header class="topbar">
+          <h2>Dashboard</h2>
+          <div class="topbar-right">
+            <p id="today-date"></p>
+          </div>
+        </header>
+
+        <main class="content-area">
+          <div class="table-grid">
+            <div class="card">
+              <div class="stat-card">
+                <div>
+                  <p class="muted">Ventas Hoy</p>
+                  <h4 class="text-success">S/ 0.00</h4>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="stat-card">
+                <div>
+                  <p class="muted">Pedidos</p>
+                  <h4>0</h4>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="stat-card">
+                <div>
+                  <p class="muted">Mesas Ocupadas</p>
+                  <h4 class="text-warning">0/6</h4>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="stat-card">
+                <div>
+                  <p class="muted">Productos</p>
+                  <h4>0</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="split-layout" style="margin-top:20px;">
+            <div class="card">
+              <h3>Ingresos vs Egresos</h3>
+              <div style="position:relative;height:250px;width:100%;">
+                <canvas id="graficoCaja"></canvas>
+              </div>
+            </div>
+            <div class="card">
+              <h3>Pedidos por Tipo</h3>
+              <div style="position:relative;height:250px;width:100%;">
+                <canvas id="graficoPedidos"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:20px;">
+            <h3>Acciones Rápidas</h3>
+            <div class="form-actions">
+              <button class="btn btn-primary" onclick="window.location.href='venta.html'">
+                <i class="fas fa-cash-register"></i>
+                Nueva Venta
+              </button>
+              <button class="btn btn-muted" onclick="window.location.href='caja.html'">
+                <i class="fas fa-wallet"></i>
+                Abrir Caja
+              </button>
+              <button class="btn btn-muted" onclick="window.location.href='inventario.html'">
+                <i class="fas fa-boxes-stacked"></i>
+                Ver Inventario
+              </button>
+              <button id="btnHistorialMensual" class="btn btn-primary-green">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                VER HISTORIAL MENSUAL
+              </button>
+            </div>
+            <div id="modalHistorial" class="card hidden" style="margin-top:20px;">
+              <h3>Historial Mensual</h3>
+              <form class="form-grid" id="formHistorialMensual">
+                <label class="field">
+                  <span>Mes</span>
+                  <select id="selectMes">
+                    <option value="1">Enero</option>
+                    <option value="2">Febrero</option>
+                    <option value="3">Marzo</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Mayo</option>
+                    <option value="6">Junio</option>
+                    <option value="7">Julio</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Septiembre</option>
+                    <option value="10">Octubre</option>
+                    <option value="11">Noviembre</option>
+                    <option value="12">Diciembre</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Año</span>
+                  <select id="selectAnio"></select>
+                </label>
+                <div class="form-actions form-actions-end" style="padding-top:0;">
+                  <button id="btnDescargarExcel" class="btn btn-primary-green" type="button">
+                    Descargar Excel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </main>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast-container" class="toastFixed"></div>
+
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="static/js/app.js"></script>
+  <script src="static/js/APIs_Dashboard.js"></script>
+  <script src="static/js/sidebar.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver/dist/FileSaver.min.js"></script>
+
+</body>
+</html>
