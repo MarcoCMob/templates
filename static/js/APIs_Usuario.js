@@ -115,19 +115,13 @@ const cargarSecciones = (sesionActiva) => {
 
 document.getElementById("btnCerrarSesion").addEventListener("click", async (e) => {
     e.preventDefault();
-
     try {
-
-        const response = await fetch(`http://localhost:8083/api/usuario/cerrarSesion`, {
-            method: 'PUT'
-        });
-
+        const response = await fetch(`${BASE_URL}/usuario/cerrarSesion`, { method: 'PUT' });
         if (!response.ok) {
             console.log("Ocurrio un error");
         } else {
-            window.location.href = 'index.html';
+            window.location.href = '../index.html';
         }
-
     } catch (error) {
         console.log(error);
     }
