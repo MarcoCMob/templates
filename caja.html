@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ERP - Caja</title>
-  <link rel="stylesheet" href="../static/css/styles.css">
+  <link rel="stylesheet" href="static/css/styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 
@@ -19,14 +19,6 @@
           <button class="btn-hamburger" id="btnHamburger" title="Toggle menú">
             <i class="fas fa-bars"></i>
           </button>
-        </div>
-
-        <div class="sidebar-brand">
-          <div class="brand-icon" aria-hidden="true"><i class="fas fa-utensils"></i></div>
-          <div class="sidebar-brand-text">
-            <h2>Lo Esencial</h2>
-            <p>ERP Broasteria</p>
-          </div>
         </div>
 
         <nav class="sidebar-nav">
@@ -56,23 +48,17 @@
           </a>
         </nav>
 
-        <div class="sidebar-footer">
-          <div class="user-chip">
-            <div id="infoAvatar" class="user-avatar">A</div>
-            <div class="user-meta">
-              <p id="infoUsuario">Usuario</p>
-              <span id="infoRol">Rol</span>
-            </div>
-          </div>
-        </div>
       </aside>
 
       <div class="main-content">
-        <!-- TOPBAR -->
-        <header class="topbar">
-          <h2>Caja</h2>
-          <div class="topbar-right">
-            <div class="topbar-user" id="topbarUser">
+        <div class="page-brand">
+          <div class="brand-icon" aria-hidden="true"><i class="fas fa-utensils"></i></div>
+          <div class="page-brand-text">
+            <h2>Lo Esencial</h2>
+            <p>ERP Broasteria</p>
+          </div>
+          <!-- USER -->
+          <div class="topbar-user" id="topbarUser">
               <button class="topbar-user-btn" id="topbarUserBtn">
                 <div class="topbar-user-avatar" id="topbarAvatar">A</div>
                 <div class="topbar-user-info">
@@ -88,7 +74,13 @@
                   Cerrar Sesión
                 </button>
               </div>
-            </div>
+          </div>
+        </div>
+        <!-- TOPBAR -->
+        <header class="topbar">
+          <h2>Caja</h2>
+          <div class="topbar-right">
+            <p id="today-date"></p>
           </div>
         </header>
 
@@ -213,9 +205,9 @@
 
   <div id="toast-container" class="toastFixed"></div>
 
-  <script src="../static/js/app.js"></script>
-  <script src="../static/js/APIs_Caja.js"></script>
-  <script src="../static/js/sidebar.js"></script>
+  <script src="static/js/app.js"></script>
+  <script src="static/js/APIs_Caja.js"></script>
+  <script src="static/js/sidebar.js"></script>
 
 </body>
 </html>
