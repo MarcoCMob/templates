@@ -1,11 +1,10 @@
-const BASE_URL = 'https://erp-marcodesarrolloweb.onrender.com/api';
-let cajaAbiertActual = null;
+const BASE_URL = "http://localhost:8083/api";
 
+let cajaAbiertActual = null;
 
 const divCajaTurnoCerrado = document.getElementById("divCajaTurnoCerrado");
 const divCajaTurnoAbierto = document.getElementById("divCajaTurnoAbierto");
 const btnRegistrarMovimiento = document.getElementById("btnRegistrarMovimiento");
-
 
 const toastContainer = document.getElementById('toast-container');
 const mostrarToast = (mensaje, tipo = 'info') => {
@@ -31,7 +30,6 @@ function mostrarTurnoAbierto(caja) {
     document.getElementById("infoMontoInicial").textContent = `Monto inicial: S/ ${Number(caja.montoInicial)}`;
 }
 
-
 function mostrarTurnoCerrado(cajaCerrada) {
     divCajaTurnoAbierto.classList.add("hidden");
     divCajaTurnoCerrado.classList.remove("hidden");
@@ -44,7 +42,6 @@ function mostrarTurnoCerrado(cajaCerrada) {
         document.getElementById("fechaUltimoMonto").textContent = ""
     }
 }
-
 
 function agregarMovimientoAlDOM(mov) {
     const lista = document.getElementById("divListMovimientos");
@@ -62,7 +59,6 @@ function agregarMovimientoAlDOM(mov) {
     lista.appendChild(item);
 }
 
-
 const obtenerCaja = async (idCaja) => {
     try {
         const response = await fetch(`${BASE_URL}/caja/${idCaja}`);
@@ -77,7 +73,6 @@ const obtenerCaja = async (idCaja) => {
     }
 };
 
-
 const obtenerMovimientos = async (idCaja) => {
     try {
         const response = await fetch(`${BASE_URL}/caja/movimientos/${idCaja}`);
@@ -91,7 +86,6 @@ const obtenerMovimientos = async (idCaja) => {
         return [];
     }
 };
-
 
 const aperturarCaja = async (montoInicial) => {
     try {
@@ -117,7 +111,6 @@ const aperturarCaja = async (montoInicial) => {
     }
 };
 
-
 const cerrarCaja = async (idCaja) => {
     try {
         const response = await fetch(`${BASE_URL}/caja/cerrarCaja/${idCaja}`, {
@@ -139,7 +132,6 @@ const cerrarCaja = async (idCaja) => {
         return null;
     }
 };
-
 
 const registrarMovimiento = async (idCaja, requestMovimiento) => {
     try {
@@ -167,9 +159,7 @@ const registrarMovimiento = async (idCaja, requestMovimiento) => {
 };
 
 const obtenerUltimaCajaCerrada = async () => {
-
     try {
-
         const response = await fetch(`${BASE_URL}/caja/obtenerUltimaCajaCerrada`);
         const data = await response.json();
 
@@ -178,18 +168,13 @@ const obtenerUltimaCajaCerrada = async () => {
         }
 
         return data;
-
-
     } catch (error) {
         console.log(error);
     }
-
 }
 
 const obtenerCajaAbierta = async () => {
-
     try {
-
         const response = await fetch(`${BASE_URL}/caja/obtenerCajaAbierta`);
         const data = await response.json();
 
@@ -198,17 +183,12 @@ const obtenerCajaAbierta = async () => {
         }
 
         return data;
-
-
     } catch (error) {
         console.log(error);
     }
-
 }
 
-
 const cargarEstadoInicial = async () => {
-
     cajaAbiertActual = await obtenerCajaAbierta();
 
     if (!cajaAbiertActual) {
@@ -222,7 +202,6 @@ const cargarEstadoInicial = async () => {
     const movimientos = await obtenerMovimientos(cajaAbiertActual.idCaja);
     movimientos.forEach(agregarMovimientoAlDOM);
 };
-
 
 const btnAbrirTurno = document.getElementById("btnAbrirTurno");
 btnAbrirTurno.addEventListener("click", async (e) => {
@@ -240,7 +219,6 @@ btnAbrirTurno.addEventListener("click", async (e) => {
     mostrarTurnoAbierto(caja);
 });
 
-
 const btnCerrarTurno = document.getElementById("btnCerrarTurno");
 btnCerrarTurno.addEventListener("click", async (e) => {
     e.preventDefault();
@@ -256,7 +234,6 @@ btnCerrarTurno.addEventListener("click", async (e) => {
     const lista = document.getElementById("divListMovimientos");
     lista.innerHTML = '';
 });
-
 
 btnRegistrarMovimiento.addEventListener("click", async (e) => {
     e.preventDefault();
@@ -281,9 +258,7 @@ btnRegistrarMovimiento.addEventListener("click", async (e) => {
 });
 
 const verificarSesionActiva = async () => {
-
     try {
-
         const response = await fetch(`${BASE_URL}/usuario/sesionActiva`);
         const data = await response.json();
 
@@ -292,15 +267,12 @@ const verificarSesionActiva = async () => {
         } else {
             return data;
         }
-
     } catch (error) {
         console.log(error);
     }
-
 }
 
 const cargarSecciones = (sesionActiva) => {
-
     if (sesionActiva.rol === "Administrador") {
         return;
     }
@@ -319,44 +291,108 @@ const cargarSecciones = (sesionActiva) => {
         document.getElementById("navSeccionUsuario").classList.add("hidden");
         document.getElementById("navSeccionConfiguracion").classList.add("hidden");
     }
-
 }
 
 document.getElementById("btnCerrarSesion").addEventListener("click", async (e) => {
     e.preventDefault();
+
     try {
-        const response = await fetch(`${BASE_URL}/usuario/cerrarSesion`, { method: 'PUT' });
+        const response = await fetch(`http://localhost:8083/api/usuario/cerrarSesion`, {
+            method: 'PUT'
+        });
+
         if (!response.ok) {
             console.log("Ocurrio un error");
         } else {
-            window.location.href = '../index.html';
+            window.location.href = 'login.html';
         }
     } catch (error) {
         console.log(error);
     }
 });
 
-document.addEventListener("DOMContentLoaded", async (e) => {
+// ============================================
+// BÚSQUEDA Y FILTRADO DE MOVIMIENTOS
+// ============================================
 
+const txtBuscarMovimiento = document.getElementById("txtBuscarMovimiento");
+const filtroTipo = document.getElementById("filtroTipo");
+const filtroMetodo = document.getElementById("filtroMetodo");
+const noResultsMessage = document.getElementById("noResultsMessage");
+
+const aplicarFiltros = () => {
+    const textoBusqueda = txtBuscarMovimiento.value.toLowerCase().trim();
+    const tipoSeleccionado = filtroTipo.value;
+    const metodoSeleccionado = filtroMetodo.value;
+    
+    const movimientos = document.querySelectorAll("#divListMovimientos .list-item");
+    let visibles = 0;
+    
+    movimientos.forEach(movimiento => {
+        const concepto = movimiento.querySelector(".title")?.textContent?.toLowerCase() || "";
+        const badges = movimiento.querySelectorAll(".badge");
+        let metodo = "";
+        let tipo = "";
+        
+        badges.forEach(badge => {
+            const texto = badge.textContent.trim().toUpperCase();
+            if (["EFECTIVO", "TARJETA", "YAPE"].includes(texto)) {
+                metodo = texto;
+            } else if (["INGRESO", "EGRESO"].includes(texto)) {
+                tipo = texto;
+            }
+        });
+        
+        const monto = movimiento.querySelector("strong")?.textContent?.toLowerCase() || "";
+        
+        const coincideTexto = !textoBusqueda || 
+            concepto.includes(textoBusqueda) || 
+            metodo.toLowerCase().includes(textoBusqueda) || 
+            tipo.toLowerCase().includes(textoBusqueda) || 
+            monto.includes(textoBusqueda);
+        
+        const coincideTipo = !tipoSeleccionado || tipo === tipoSeleccionado;
+        const coincideMetodo = !metodoSeleccionado || metodo === metodoSeleccionado;
+        
+        if (coincideTexto && coincideTipo && coincideMetodo) {
+            movimiento.classList.remove("hidden");
+            visibles++;
+        } else {
+            movimiento.classList.add("hidden");
+        }
+    });
+    
+    if (visibles === 0 && movimientos.length > 0) {
+        noResultsMessage.classList.remove("hidden");
+    } else {
+        noResultsMessage.classList.add("hidden");
+    }
+};
+
+txtBuscarMovimiento.addEventListener("input", aplicarFiltros);
+filtroTipo.addEventListener("change", aplicarFiltros);
+filtroMetodo.addEventListener("change", aplicarFiltros);
+
+// ============================================
+// DOMContentLoaded
+// ============================================
+
+document.addEventListener("DOMContentLoaded", async (e) => {
     e.preventDefault();
 
     const sesionActiva = await verificarSesionActiva();
 
     if (sesionActiva == null) {
-        window.location.href = 'index.html';
+        window.location.href = 'login.html';
         return;
     }
     if (typeof window.poblarTopbarUsuario === 'function') {
         window.poblarTopbarUsuario(sesionActiva);
     }
 
-    const infoUsuarioElem = document.getElementById("infoUsuario");
-    const infoRolElem = document.getElementById("infoRol");
-    const infoAvatarElem = document.getElementById("infoAvatar");
-
-    if (infoUsuarioElem) infoUsuarioElem.textContent = sesionActiva.nombre;
-    if (infoRolElem) infoRolElem.textContent = sesionActiva.rol;
-    if (infoAvatarElem) infoAvatarElem.textContent = sesionActiva.rol.charAt(0).toUpperCase();
+    document.getElementById("infoUsuario").textContent = sesionActiva.nombre;
+    document.getElementById("infoRol").textContent = sesionActiva.rol;
+    document.getElementById("infoAvatar").textContent = sesionActiva.rol.charAt(0).toUpperCase();
 
     cargarSecciones(sesionActiva);
 

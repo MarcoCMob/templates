@@ -164,8 +164,8 @@ body {
 }
 
 .btn-primary-green {
-  background: var(--green-500)!important;
-  color: var(--white)!important;
+  background: var(--green-500) !important;
+  color: var(--white) !important;
 }
 
 .btn-primary-green:hover {
@@ -955,20 +955,21 @@ ol {
   width: 14px;
   height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: white; /* Color principal del giro */
+  border-top-color: white;
+  /* Color principal del giro */
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-right: 8px;
   vertical-align: middle;
 }
 
-.modal-inventario{
-  max-height: 200px; 
-  overflow-y: auto; 
-  margin: 1rem 0; 
-  text-align: left; 
-  background: var(--bg-muted, #f8f9fa); 
-  padding: 1rem; 
+.modal-inventario {
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 1rem 0;
+  text-align: left;
+  background: var(--bg-muted, #f8f9fa);
+  padding: 1rem;
   border-radius: 8px;
 }
 
@@ -977,6 +978,7 @@ ol {
     transform: rotate(360deg);
   }
 }
+
 /* ============================================
    SIDEBAR HAMBURGER & COLLAPSE
    ============================================ */
@@ -1316,9 +1318,11 @@ ol {
 
 /* Efecto hover con elevación suave para los botones del Punto de Venta */
 .mesa-manager-header .btn-primary:hover {
-  background: var(--orange-600); /* Se oscurece un poco al pasar el mouse */
+  background: var(--orange-600);
+  /* Se oscurece un poco al pasar el mouse */
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(249, 115, 22, 0.2); /* Sombra naranja sutil */
+  box-shadow: 0 8px 16px rgba(249, 115, 22, 0.2);
+  /* Sombra naranja sutil */
 }
 
 /* ============================================
@@ -1328,10 +1332,13 @@ ol {
 /* 1. Ajustamos el contenedor principal de los movimientos */
 #divListMovimientos {
   /* Limitamos la altura basándonos en el tamaño aproximado de la tarjeta izquierda */
-  max-height: 380px; 
-  overflow-y: auto;   /* El scroll vertical solo aparece si el contenido supera los 380px */
-  overflow-x: hidden;  /* Evitamos cualquier desborde horizontal molesto */
-  padding-right: 8px;  /* Espacio prudente para que la barra no tape el texto del monto */
+  max-height: 380px;
+  overflow-y: auto;
+  /* El scroll vertical solo aparece si el contenido supera los 380px */
+  overflow-x: hidden;
+  /* Evitamos cualquier desborde horizontal molesto */
+  padding-right: 8px;
+  /* Espacio prudente para que la barra no tape el texto del monto */
 }
 
 /* 2. Estilización moderna de la barra de desplazamiento (Chrome, Edge, Safari) */
@@ -1340,16 +1347,19 @@ ol {
 }
 
 #divListMovimientos::-webkit-scrollbar-track {
-  background: transparent; /* Fondo invisible para que no rompa el diseño limpio */
+  background: transparent;
+  /* Fondo invisible para que no rompa el diseño limpio */
 }
 
 #divListMovimientos::-webkit-scrollbar-thumb {
-  background: #cbd5e1; /* Gris suave neutro que combina con tu interfaz */
+  background: #cbd5e1;
+  /* Gris suave neutro que combina con tu interfaz */
   border-radius: 10px;
 }
 
 #divListMovimientos::-webkit-scrollbar-thumb:hover {
-  background: var(--orange-500); /* Se vuelve naranja al pasar el cursor, manteniendo tu identidad visual */
+  background: var(--orange-500);
+  /* Se vuelve naranja al pasar el cursor, manteniendo tu identidad visual */
 }
 
 /* ============================================
@@ -1358,11 +1368,13 @@ ol {
 
 .table-container {
   /* Aquí defines la altura fija que prefieras antes de que aparezca el scroll */
-  max-height: 400px; 
+  max-height: 400px;
   overflow-y: auto;
-  overflow-x: auto; /* Por si en el futuro tienes muchas columnas */
+  overflow-x: auto;
+  /* Por si en el futuro tienes muchas columnas */
   padding-right: 4px;
-  margin-bottom: 1rem; /* Da un respiro entre la tabla y el formulario cuando se abre */
+  margin-bottom: 1rem;
+  /* Da un respiro entre la tabla y el formulario cuando se abre */
 }
 
 /* Fijar los encabezados de la tabla en la parte superior al scrollear */
@@ -1372,15 +1384,16 @@ ol {
   z-index: 10;
   /* IMPORTANTE: Ponle el mismo color de fondo que usa tu diseño para los TH 
      (asumo un gris muy claro o blanco por la captura anterior) */
-  background-color: #f8fafc; 
+  background-color: #f8fafc;
   /* Sombre para mantener la división visual al hacer scroll */
-  box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
 }
 
 /* Estilo de la barra de desplazamiento (para que haga match con Caja) */
 .table-container::-webkit-scrollbar {
   width: 6px;
-  height: 6px; /* Para el scroll horizontal si llega a aparecer */
+  height: 6px;
+  /* Para el scroll horizontal si llega a aparecer */
 }
 
 .table-container::-webkit-scrollbar-track {
@@ -1441,3 +1454,103 @@ ol {
   margin: 0 4px;
 }
 
+/* ============================================
+BUSCADOR Y FILTROS DE MOVIMIENTOS
+============================================ */
+.search-filters-container {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--zinc-400);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 14px 12px 42px;
+  border-radius: 12px;
+  border: 1px solid var(--zinc-200);
+  background: var(--white);
+  font-size: 14px;
+  color: var(--zinc-800);
+  font-family: 'Manrope', sans-serif;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--orange-500);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+}
+
+.search-input::placeholder {
+  color: var(--zinc-400);
+}
+
+.filters-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.filter-select {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--zinc-200);
+  background: var(--white);
+  font-size: 14px;
+  color: var(--zinc-800);
+  font-family: 'Manrope', sans-serif;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2371717a' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--orange-500);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+}
+
+.no-results {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--zinc-400);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.no-results i {
+  font-size: 24px;
+}
+
+.no-results p {
+  margin: 0;
+  font-size: 14px;
+}
+
+@media (max-width: 720px) {
+  .filters-row {
+    grid-template-columns: 1fr;
+  }
+}
