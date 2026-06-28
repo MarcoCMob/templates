@@ -72,6 +72,10 @@ const aplicarFiltroOrden = (productos, orden, catFiltro) => {
       (a.nombreCategoria || '').localeCompare(b.nombreCategoria || '') ||
       a.nombreProducto.localeCompare(b.nombreProducto)
     );
+  } else if (orden === 'stock-desc') {
+    lista.sort((a, b) => b.stock - a.stock);
+  } else if (orden === 'stock-asc') {
+    lista.sort((a, b) => a.stock - b.stock);
   }
 
   return lista;
