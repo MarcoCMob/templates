@@ -113,7 +113,7 @@
                 </div>
                 <div class="table-grid" id="mesa-grid"></div>
               </div>
-              <div id="divMesaPedidos" class="split-layout hidden">
+              <div id="divMesaPedidos" class="split-layout hidden" style="align-items: start;">
                 <div class="card">
                   <div class="mesa-header">
                     <div class="mesa-meta">
@@ -122,26 +122,12 @@
                     </div>
                     <span class="badge" id="mesa-estado">Libre</span>
                   </div>
-                  <form class="inline-form">
-                    <input type="hidden" />
-                    <div class="form-grid">
-                      <label class="field">
-                        <span>Producto</span>
-                        <select id="comboProductoMesa">
-                          <option value="" disabled selected>Seleccione un producto</option>
-                        </select>
-                      </label>
-                      <label class="field">
-                        <span>Cantidad</span>
-                        <input id="txtCantidadMesa" type="number" min="1" placeholder="1" />
-                      </label>
-                    </div>
-                    <div class="form-actions">
-                      <button class="btn btn-primary" id="btnAgregarPedidoMesa" type="submit">Agregar pedido</button>
-                      <button class="btn btn-primary hidden" id="btnOcuparMesa" type="submit">Marcar mesa
-                        ocupada</button>
-                    </div>
-                  </form>
+                  <div class="form-actions" style="margin-top: 1.5rem; display: flex; gap: 12px;">
+                    <button class="btn btn-primary" id="btnAgregarPedidoMesa" type="button">
+                      <i class="fas fa-plus" style="margin-right:6px;"></i> Agregar pedido
+                    </button>
+                    <button class="btn btn-primary hidden" id="btnOcuparMesa" type="button">Marcar mesa ocupada</button>
+                  </div>
                 </div>
                 <div class="card">
                   <h3>Pedidos Agregados</h3>
@@ -325,16 +311,16 @@
     </div>
   </div>
 
-  <!-- MODAL AGREGAR PEDIDO (LLEVAR/DELIVERY) -->
+  <!-- MODAL AGREGAR PEDIDO (LLEVAR/DELIVERY/LOCAL) -->
   <div id="modal-agregar-pedido" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-card" style="width: min(1200px, 95vw); padding: 0; display: flex; flex-direction: column;">
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 24px; border-bottom: 1px solid var(--zinc-200);">
-        <h3 style="margin: 0;">Agregar Productos al Pedido</h3>
-        <button class="btn btn-muted" id="btnCerrarModalAgregarPedido" type="button" style="padding: 8px 12px;">
+    <div class="modal-dialog modal-large">
+      <div class="modal-header">
+        <h3 id="modalAgregarPedidoTitulo">Agregar Productos al Pedido</h3>
+        <button class="modal-close" id="btnCerrarModalAgregarPedido" type="button" aria-label="Cerrar">
           <i class="fas fa-times"></i>
         </button>
       </div>
-      <div style="flex: 1; overflow-y: auto; padding: 24px;">
+      <div class="modal-body">
         <div class="split-layout">
           <!-- Columna izquierda: Tabla de productos -->
           <div class="card">
@@ -371,28 +357,33 @@
           <!-- Columna derecha: Productos agregados -->
           <div class="card">
             <h4 style="margin-bottom: 1rem;">Productos Agregados</h4>
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Cantidad</th>
-                  <th>P.Unit</th>
-                  <th>Total</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tbodyPedidosAgregadosModal"></tbody>
-              <tfoot id="tfootTotalPedidoModal" class="hidden">
-                <tr>
-                  <td colspan="4"><strong>Total</strong></td>
-                  <td><strong id="txtTotalPedidoModal">S/ 0.00</strong></td>
-                </tr>
-              </tfoot>
-            </table>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>P.Unit</th>
+                    <th>Total</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyPedidosAgregadosModal"></tbody>
+                <tfoot id="tfootTotalPedidoModal" class="hidden">
+                  <tr>
+                    <td colspan="4"><strong>Total</strong></td>
+                    <td><strong id="txtTotalPedidoModal">S/ 0.00</strong></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
         </div>
       </div>
-      <div style="display: flex; justify-content: flex-end; gap: 12px; padding: 24px; border-top: 1px solid var(--zinc-200);">
+      <div class="modal-footer">
+        <a href="inventario.html" class="btn btn-muted" style="margin-right: auto; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
+          <i class="fas fa-boxes-stacked"></i> Actualizar Stock
+        </a>
         <button class="btn btn-muted" type="button" id="btnCancelarModalPedido">Cancelar</button>
         <button class="btn btn-primary" type="button" id="btnRegistrarPagoPedido">Registrar Pago</button>
       </div>

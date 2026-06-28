@@ -242,10 +242,10 @@ const cargarMesas = async () => {
                 <span>${estadoMesa}</span>
                 `;
 
-                detallesPedidoLocal.set(mesa.idMesa, new Map());
-                mesaGridVenta.appendChild(botonMesa);
+                 detallesPedidoLocal.set(String(mesa.idMesa), new Map());
+                 mesaGridVenta.appendChild(botonMesa);
 
-            });
+             });
         }
     } catch (error) {
         console.log(error);
@@ -537,6 +537,21 @@ const renderDetallesMesa = () => {
     } else {
         tfootTotalPedidoMesa.classList.add("hidden");
     }
+
+    // Sincronizar el botón btnOcuparMesa según si hay pedidos y el estado de la mesa
+    const btnOcuparMesa = document.getElementById("btnOcuparMesa");
+    if (btnOcuparMesa) {
+        if (mapDetallesMesa.size > 0) {
+            btnOcuparMesa.classList.remove("hidden");
+            if (MesaActiva.dataset.estado === "OCUPADO") {
+                btnOcuparMesa.textContent = "Actualizar pedido";
+            } else {
+                btnOcuparMesa.textContent = "Marcar mesa ocupada";
+            }
+        } else {
+            btnOcuparMesa.classList.add("hidden");
+        }
+    }
 };
 
 
@@ -581,7 +596,7 @@ btnEliminarMesa.addEventListener("click", async (e) => {
 });
 
 // ──────────────────────────────────────────────
-// MODAL AGREGAR PEDIDO (LLEVAR / DELIVERY)
+// MODAL AGREGAR PEDIDO (LLEVAR / DELIVERY / LOCAL)
 // ──────────────────────────────────────────────
 const modalAgregarPedido = document.getElementById('modal-agregar-pedido');
 const btnAbrirModalAgregarPedido = document.getElementById('btnAbrirModalAgregarPedido');
@@ -589,6 +604,54 @@ const btnCerrarModalAgregarPedido = document.getElementById('btnCerrarModalAgreg
 const btnCancelarModalPedido = document.getElementById('btnCancelarModalPedido');
 
 let productosListaGlobal = [];
+
+const obtenerMapActivo = () => {
+    if (tipoPedidoActivo === "DELIVERY") {
+        return detallesPedidoDelivery;
+    } else if (tipoPedidoActivo === "LLEVAR") {
+        return detallesPedidoLlevar;
+    } else if (tipoPedidoActivo === "LOCAL") {
+        if (MesaActiva) {
+            const idMesa = MesaActiva.dataset.idMesa;
+            let mapMesa = detallesPedidoLocal.get(idMesa);
+            if (!mapMesa) {
+                mapMesa = new Map();
+                detallesPedidoLocal.set(idMesa, mapMesa);
+            }
+            return mapMesa;
+        }
+    }
+    return new Map();
+};
+
+const abrirModalAgregarPedido = () => {
+    if (!modalAgregarPedido) return;
+    
+    // Configurar título y botón
+    const tituloModal = document.getElementById("modalAgregarPedidoTitulo") || document.querySelector("#modal-agregar-pedido .modal-header h3");
+    if (tituloModal) {
+        if (tipoPedidoActivo === "LOCAL") {
+            tituloModal.textContent = `Agregar Productos - Mesa ${MesaActiva ? MesaActiva.dataset.mesa : ""}`;
+        } else if (tipoPedidoActivo === "DELIVERY") {
+            tituloModal.textContent = `Agregar Productos - Delivery`;
+        } else {
+            tituloModal.textContent = `Agregar Productos - Para Llevar`;
+        }
+    }
+
+    const btnRegistrarPago = document.getElementById("btnRegistrarPagoPedido");
+    if (btnRegistrarPago) {
+        if (tipoPedidoActivo === "LOCAL") {
+            btnRegistrarPago.textContent = "Aceptar";
+        } else {
+            btnRegistrarPago.textContent = "Registrar Pago";
+        }
+    }
+
+    modalAgregarPedido.classList.remove('hidden');
+    cargarProductosModalPedido();
+    renderTablaProductosAgregadosModal();
+};
 
 const cargarProductosModalPedido = async () => {
     try {
@@ -648,14 +711,23 @@ const renderTablaProductosModalPedido = (productos) => {
     const tbody = document.getElementById('tbodyProductosModalPedido');
     tbody.innerHTML = '';
     
+    const mapActivo = obtenerMapActivo();
     productos.forEach(producto => {
-        const mapActivo = tipoPedidoActivo === "DELIVERY" ? detallesPedidoDelivery : detallesPedidoLlevar;
         const cantidadAgregada = mapActivo.has(producto.idProducto) ? mapActivo.get(producto.idProducto).cantidad : 0;
         
+        let stockBadge = "";
+        if (producto.stock === 0) {
+            stockBadge = `<span class="badge badge-red" title="Sin stock">0</span>`;
+        } else if (producto.stock < 5) {
+            stockBadge = `<span class="badge badge-yellow" title="Bajo stock">${producto.stock}</span>`;
+        } else {
+            stockBadge = producto.stock;
+        }
+
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${producto.nombreProducto}</td>
-            <td>${producto.stock}</td>
+            <td>${stockBadge}</td>
             <td>
                 <div class="table-actions">
                     <button class="btn btn-action btn-modal-agregar-producto" type="button" title="Agregar" data-id="${producto.idProducto}" data-nombre="${producto.nombreProducto}" data-precio="${producto.precio}">
@@ -681,7 +753,7 @@ const renderTablaProductosAgregadosModal = () => {
     tbody.innerHTML = '';
     let total = 0;
     
-    const mapActivo = tipoPedidoActivo === "DELIVERY" ? detallesPedidoDelivery : detallesPedidoLlevar;
+    const mapActivo = obtenerMapActivo();
     
     mapActivo.forEach((detalle) => {
         const row = document.createElement('tr');
@@ -708,17 +780,16 @@ const renderTablaProductosAgregadosModal = () => {
         tfootTotal.classList.add('hidden');
     }
     
-    // Sincronizar con la tabla de divPedidoRegistro
-    renderDetallesPedido();
+    // Sincronizar con la tabla correspondiente en la vista
+    if (tipoPedidoActivo === "LOCAL") {
+        renderDetallesMesa();
+    } else {
+        renderDetallesPedido();
+    }
 };
 
 if (btnAbrirModalAgregarPedido) {
-    btnAbrirModalAgregarPedido.addEventListener('click', () => {
-        if (!modalAgregarPedido) return;
-        modalAgregarPedido.classList.remove('hidden');
-        cargarProductosModalPedido();
-        renderTablaProductosAgregadosModal();
-    });
+    btnAbrirModalAgregarPedido.addEventListener('click', abrirModalAgregarPedido);
 }
 
 if (btnCerrarModalAgregarPedido) {
@@ -755,7 +826,7 @@ if (tbodyProductosModal) {
         const nombreProducto = btnAgregar.dataset.nombre;
         const precio = Number(btnAgregar.dataset.precio);
         
-        const mapActivo = tipoPedidoActivo === "DELIVERY" ? detallesPedidoDelivery : detallesPedidoLlevar;
+        const mapActivo = obtenerMapActivo();
         
         if (mapActivo.has(idProducto)) {
             const detalle = mapActivo.get(idProducto);
@@ -784,7 +855,7 @@ if (tbodyAgregadosModal) {
         if (!btnQuitar) return;
         
         const idProducto = btnQuitar.dataset.id;
-        const mapActivo = tipoPedidoActivo === "DELIVERY" ? detallesPedidoDelivery : detallesPedidoLlevar;
+        const mapActivo = obtenerMapActivo();
         mapActivo.delete(idProducto);
         
         renderTablaProductosModalPedido(obtenerProductosFiltradosModal());
@@ -896,7 +967,12 @@ if (btnRegistrarPagoPedido) {
     btnRegistrarPagoPedido.addEventListener("click", (e) => {
         e.preventDefault();
 
-        const mapActivo = tipoPedidoActivo === "DELIVERY" ? detallesPedidoDelivery : detallesPedidoLlevar;
+        if (tipoPedidoActivo === "LOCAL") {
+            if (modalAgregarPedido) modalAgregarPedido.classList.add('hidden');
+            return;
+        }
+
+        const mapActivo = obtenerMapActivo();
 
         if (mapActivo.size === 0) {
             mostrarToast("Agrega al menos un producto antes de registrar el pago", "error");
@@ -1016,63 +1092,16 @@ btnOcuparMesa.addEventListener("click", async (e) => {
 
 
 const btnAgregarPedidoMesa = document.getElementById("btnAgregarPedidoMesa");
-btnAgregarPedidoMesa.addEventListener("click", async (e) => {
-    e.preventDefault();
-
-    if (MesaActiva == null) {
-        mostrarToast("Por favor, selecciona una mesa primero", "info");
-        return;
-    }
-
-    const comboProductoMesa = document.getElementById("comboProductoMesa");
-    const txtCantidadMesa = document.getElementById("txtCantidadMesa");
-
-    const requestDetalle = {
-        idProducto: comboProductoMesa.value,
-        cantidad: Number(txtCantidadMesa.value)
-    };
-
-    const detalleValido = await validarDetallePedido(requestDetalle);
-
-    if (!detalleValido) {
-        return;
-    }
-
-    if (MesaActiva.dataset.estado === "OCUPADO") {
-        const agregadoBackend = await agregarDetalleAlaMesa(MesaActiva.dataset.idMesa, requestDetalle);
-        if (!agregadoBackend) return;
-        mostrarToast("Producto agregado al pedido existente", "success");
-    } else {
-        btnOcuparMesa.classList.remove("hidden");
-    }
-
-    const producto = productosMap.get(requestDetalle.idProducto);
-    const precioUnitario = Number(producto.precio);
-    const total = precioUnitario * requestDetalle.cantidad;
-
-    const detalle = {
-        idProducto: comboProductoMesa.value,
-        nombreProducto: producto.nombreProducto,
-        cantidad: Number(txtCantidadMesa.value),
-        precioUnitario,
-        total
-    };
-
-    const mapMesa = detallesPedidoLocal.get(MesaActiva.dataset.idMesa);
-
-    if (mapMesa.has(detalle.idProducto)) {
-        const productoExistente = mapMesa.get(detalle.idProducto);
-        productoExistente.cantidad += detalle.cantidad;
-        productoExistente.total = productoExistente.cantidad * productoExistente.precioUnitario;
-    } else {
-        mapMesa.set(detalle.idProducto, detalle);
-    }
-
-    txtCantidadMesa.value = "";
-    comboProductoMesa.selectedIndex = 0;
-
-    renderDetallesMesa();
-});
+if (btnAgregarPedidoMesa) {
+    btnAgregarPedidoMesa.addEventListener("click", (e) => {
+        if (e) e.preventDefault();
+        if (MesaActiva == null) {
+            mostrarToast("Por favor, selecciona una mesa primero", "info");
+            return;
+        }
+        abrirModalAgregarPedido();
+    });
+}
 
 const divModalMesaOcupada = document.getElementById("divModalMesaOcupada");
 const mesaGridVenta = document.getElementById("mesa-grid");
