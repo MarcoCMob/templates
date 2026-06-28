@@ -581,52 +581,216 @@ btnEliminarMesa.addEventListener("click", async (e) => {
 });
 
 // ──────────────────────────────────────────────
-// BOTONES — PEDIDO (LLEVAR / DELIVERY)
+// MODAL AGREGAR PEDIDO (LLEVAR / DELIVERY)
 // ──────────────────────────────────────────────
-const btnAgregarPedido = document.getElementById("btnAgregarPedido");
-btnAgregarPedido.addEventListener("click", async (e) => {
-    e.preventDefault();
+const modalAgregarPedido = document.getElementById('modal-agregar-pedido');
+const btnAbrirModalAgregarPedido = document.getElementById('btnAbrirModalAgregarPedido');
+const btnCerrarModalAgregarPedido = document.getElementById('btnCerrarModalAgregarPedido');
+const btnCancelarModalPedido = document.getElementById('btnCancelarModalPedido');
 
-    const comboProductoPedido = document.getElementById("comboProductoPedido");
-    const txtCantidadPedido = document.getElementById("txtCantidadPedido");
+let productosListaGlobal = [];
 
-    const requestDetalle = {
-        idProducto: comboProductoPedido.value,
-        cantidad: Number(txtCantidadPedido.value)
-    };
-
-    const detalleValido = await validarDetallePedido(requestDetalle);
-
-    if (!detalleValido) {
-        return;
+const cargarProductosModalPedido = async () => {
+    try {
+        const response = await fetch(`${BASE_URL}/catalogo/listarProductos`);
+        if (!response.ok) {
+            mostrarToast("Error al cargar productos", "error");
+            return;
+        }
+        const data = await response.json();
+        productosListaGlobal = data;
+        poblarFiltroModalPedido(data);
+        renderTablaProductosModalPedido(data);
+    } catch (error) {
+        console.error(error);
+        mostrarToast("Error de conexión", "error");
     }
+};
 
-    const producto = productosMap.get(requestDetalle.idProducto);
-    const precioUnitario = Number(producto.precio);
-    const total = precioUnitario * requestDetalle.cantidad;
+const poblarFiltroModalPedido = (productos) => {
+    const categorias = [...new Set(productos.map(p => p.nombreCategoria))].sort();
+    const filtroCategoria = document.getElementById('modalPedidoFiltroCategoria');
+    filtroCategoria.innerHTML = '<option value="">Todas</option>';
+    categorias.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        filtroCategoria.appendChild(opt);
+    });
+};
 
-    const detalle = {
-        idProducto: comboProductoPedido.value,
-        nombreProducto: producto.nombreProducto,
-        cantidad: Number(txtCantidadPedido.value),
-        precioUnitario,
-        total
-    };
+const obtenerProductosFiltradosModal = () => {
+    const orden = document.getElementById('modalPedidoFiltroOrden').value;
+    const catFiltro = document.getElementById('modalPedidoFiltroCategoria').value;
+    
+    let lista = [...productosListaGlobal];
+    
+    if (catFiltro) {
+        lista = lista.filter(p => p.nombreCategoria === catFiltro);
+    }
+    
+    if (orden === 'az') {
+        lista.sort((a, b) => a.nombreProducto.localeCompare(b.nombreProducto));
+    } else if (orden === 'za') {
+        lista.sort((a, b) => b.nombreProducto.localeCompare(a.nombreProducto));
+    } else if (orden === 'categoria') {
+        lista.sort((a, b) => a.nombreCategoria.localeCompare(b.nombreCategoria) || a.nombreProducto.localeCompare(b.nombreProducto));
+    } else if (orden === 'stock-desc') {
+        lista.sort((a, b) => b.stock - a.stock);
+    } else if (orden === 'stock-asc') {
+        lista.sort((a, b) => a.stock - b.stock);
+    }
+    
+    return lista;
+};
 
+const renderTablaProductosModalPedido = (productos) => {
+    const tbody = document.getElementById('tbodyProductosModalPedido');
+    tbody.innerHTML = '';
+    
+    productos.forEach(producto => {
+        const mapActivo = tipoPedidoActivo === "DELIVERY" ? detallesPedidoDelivery : detallesPedidoLlevar;
+        const cantidadAgregada = mapActivo.has(producto.idProducto) ? mapActivo.get(producto.idProducto).cantidad : 0;
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${producto.nombreProducto}</td>
+            <td>${producto.stock}</td>
+            <td>
+                <div class="table-actions">
+                    <button class="btn btn-action btn-modal-agregar-producto" type="button" title="Agregar" data-id="${producto.idProducto}" data-nombre="${producto.nombreProducto}" data-precio="${producto.precio}">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    ${cantidadAgregada > 0 ? `<span class="badge" style="margin-left: 4px;">${cantidadAgregada}</span>` : ''}
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+};
+
+const aplicarFiltrosModalPedido = () => {
+    renderTablaProductosModalPedido(obtenerProductosFiltradosModal());
+};
+
+const renderTablaProductosAgregadosModal = () => {
+    const tbody = document.getElementById('tbodyPedidosAgregadosModal');
+    const txtTotal = document.getElementById('txtTotalPedidoModal');
+    const tfootTotal = document.getElementById('tfootTotalPedidoModal');
+    
+    tbody.innerHTML = '';
+    let total = 0;
+    
     const mapActivo = tipoPedidoActivo === "DELIVERY" ? detallesPedidoDelivery : detallesPedidoLlevar;
-
-    if (mapActivo.has(detalle.idProducto)) {
-        const productoExistente = mapActivo.get(detalle.idProducto);
-        productoExistente.cantidad += detalle.cantidad;
-        productoExistente.total = productoExistente.cantidad * productoExistente.precioUnitario;
+    
+    mapActivo.forEach((detalle) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${detalle.nombreProducto}</td>
+            <td>${detalle.cantidad}</td>
+            <td>${formatoMoneda(detalle.precioUnitario)}</td>
+            <td>${formatoMoneda(detalle.total)}</td>
+            <td>
+                <button class="btn btn-danger btn-modal-quitar-producto" type="button" title="Quitar" data-id="${detalle.idProducto}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+        total += detalle.total;
+    });
+    
+    txtTotal.textContent = formatoMoneda(total);
+    
+    if (mapActivo.size > 0) {
+        tfootTotal.classList.remove('hidden');
     } else {
-        mapActivo.set(detalle.idProducto, detalle);
+        tfootTotal.classList.add('hidden');
     }
+    
+    // Sincronizar con la tabla de divPedidoRegistro
+    renderDetallesPedido();
+};
 
-    txtCantidadPedido.value = "";
-    comboProductoPedido.selectedIndex = 0;
-    renderDetallesPedido(tipoPedidoActivo);
-});
+if (btnAbrirModalAgregarPedido) {
+    btnAbrirModalAgregarPedido.addEventListener('click', () => {
+        if (!modalAgregarPedido) return;
+        modalAgregarPedido.classList.remove('hidden');
+        cargarProductosModalPedido();
+        renderTablaProductosAgregadosModal();
+    });
+}
+
+if (btnCerrarModalAgregarPedido) {
+    btnCerrarModalAgregarPedido.addEventListener('click', () => {
+        if (modalAgregarPedido) modalAgregarPedido.classList.add('hidden');
+    });
+}
+
+if (btnCancelarModalPedido) {
+    btnCancelarModalPedido.addEventListener('click', () => {
+        if (modalAgregarPedido) modalAgregarPedido.classList.add('hidden');
+    });
+}
+
+const modalPedidoFiltroOrden = document.getElementById('modalPedidoFiltroOrden');
+const modalPedidoFiltroCategoria = document.getElementById('modalPedidoFiltroCategoria');
+
+if (modalPedidoFiltroOrden) {
+    modalPedidoFiltroOrden.addEventListener('change', aplicarFiltrosModalPedido);
+}
+
+if (modalPedidoFiltroCategoria) {
+    modalPedidoFiltroCategoria.addEventListener('change', aplicarFiltrosModalPedido);
+}
+
+// Delegación de eventos para botones en la tabla de productos
+const tbodyProductosModal = document.getElementById('tbodyProductosModalPedido');
+if (tbodyProductosModal) {
+    tbodyProductosModal.addEventListener('click', (e) => {
+        const btnAgregar = e.target.closest('.btn-modal-agregar-producto');
+        if (!btnAgregar) return;
+        
+        const idProducto = btnAgregar.dataset.id;
+        const nombreProducto = btnAgregar.dataset.nombre;
+        const precio = Number(btnAgregar.dataset.precio);
+        
+        const mapActivo = tipoPedidoActivo === "DELIVERY" ? detallesPedidoDelivery : detallesPedidoLlevar;
+        
+        if (mapActivo.has(idProducto)) {
+            const detalle = mapActivo.get(idProducto);
+            detalle.cantidad += 1;
+            detalle.total = detalle.cantidad * detalle.precioUnitario;
+        } else {
+            mapActivo.set(idProducto, {
+                idProducto,
+                nombreProducto,
+                cantidad: 1,
+                precioUnitario: precio,
+                total: precio
+            });
+        }
+        
+        renderTablaProductosModalPedido(obtenerProductosFiltradosModal());
+        renderTablaProductosAgregadosModal();
+    });
+}
+
+// Delegación de eventos para quitar productos
+const tbodyAgregadosModal = document.getElementById('tbodyPedidosAgregadosModal');
+if (tbodyAgregadosModal) {
+    tbodyAgregadosModal.addEventListener('click', (e) => {
+        const btnQuitar = e.target.closest('.btn-modal-quitar-producto');
+        if (!btnQuitar) return;
+        
+        const idProducto = btnQuitar.dataset.id;
+        const mapActivo = tipoPedidoActivo === "DELIVERY" ? detallesPedidoDelivery : detallesPedidoLlevar;
+        mapActivo.delete(idProducto);
+        
+        renderTablaProductosModalPedido(obtenerProductosFiltradosModal());
+        renderTablaProductosAgregadosModal();
+    });
+}
 
 const modalCobroPedido = document.getElementById("modal-cobro-pedido");
 const tipoPedidoLabel = document.getElementById("tipo-pedido-label");
@@ -728,33 +892,48 @@ btnConfirmarCompraPedido.addEventListener("click", async (e) => {
 });
 
 const btnRegistrarPagoPedido = document.getElementById("btnRegistrarPagoPedido");
-btnRegistrarPagoPedido.addEventListener("click", (e) => {
-    e.preventDefault();
+if (btnRegistrarPagoPedido) {
+    btnRegistrarPagoPedido.addEventListener("click", (e) => {
+        e.preventDefault();
 
-    const mapActivo = tipoPedidoActivo === "DELIVERY" ? detallesPedidoDelivery : detallesPedidoLlevar;
+        const mapActivo = tipoPedidoActivo === "DELIVERY" ? detallesPedidoDelivery : detallesPedidoLlevar;
 
-    let total = 0;
-    mapActivo.forEach(detalle => total += detalle.total);
-
-    tipoPedidoLabel.textContent = `Pedido - ${tipoPedidoActivo}`;
-    modalPedidoTotalMonto.textContent = formatoMoneda(total);
-
-    comboMetodoPagoModal.selectedIndex = 0;
-
-    // Mostrar u ocultar bloque efectivo según la opción activa (tras reset de selectedIndex)
-    if (efectivoBlockModal) {
-        if (comboMetodoPagoModal && comboMetodoPagoModal.value === 'EFECTIVO') {
-            efectivoBlockModal.classList.remove('hidden');
-        } else {
-            efectivoBlockModal.classList.add('hidden');
+        if (mapActivo.size === 0) {
+            mostrarToast("Agrega al menos un producto antes de registrar el pago", "error");
+            return;
         }
-    }
-    if (inputEfectivoModal) inputEfectivoModal.value = '';
-    if (vueltoModal) vueltoModal.textContent = formatoMoneda(0);
 
-    modalCobroPedido.classList.remove("hidden");
+        let total = 0;
+        mapActivo.forEach(detalle => total += detalle.total);
 
-});
+        const tipoPedidoLabelEl = document.getElementById("tipo-pedido-label");
+        const modalPedidoTotalMontoEl = document.getElementById("modal-pedido-total-monto");
+        const comboMetodoPagoModalEl = document.getElementById("comboMetodoPagoModal");
+        const efectivoBlockModalEl = document.getElementById('efectivo-block-modal');
+        const inputEfectivoModalEl = document.getElementById('inputEfectivoModal');
+        const vueltoModalEl = document.getElementById('vuelto-modal');
+        const modalCobroPedidoEl = document.getElementById("modal-cobro-pedido");
+
+        if (tipoPedidoLabelEl) tipoPedidoLabelEl.textContent = `Pedido - ${tipoPedidoActivo}`;
+        if (modalPedidoTotalMontoEl) modalPedidoTotalMontoEl.textContent = formatoMoneda(total);
+        if (comboMetodoPagoModalEl) comboMetodoPagoModalEl.selectedIndex = 0;
+
+        // Mostrar u ocultar bloque efectivo según la opción activa (tras reset de selectedIndex)
+        if (efectivoBlockModalEl) {
+            if (comboMetodoPagoModalEl && comboMetodoPagoModalEl.value === 'EFECTIVO') {
+                efectivoBlockModalEl.classList.remove('hidden');
+            } else {
+                efectivoBlockModalEl.classList.add('hidden');
+            }
+        }
+        if (inputEfectivoModalEl) inputEfectivoModalEl.value = '';
+        if (vueltoModalEl) vueltoModalEl.textContent = formatoMoneda(0);
+
+        if (modalCobroPedidoEl) modalCobroPedidoEl.classList.remove('hidden');
+        if (modalAgregarPedido) modalAgregarPedido.classList.add('hidden');
+        renderDetallesPedido();
+    });
+}
 // ──────────────────────────────────────────────
 // TABS
 // ──────────────────────────────────────────────
