@@ -66,18 +66,18 @@
 // TOPBAR — poblar nombre y rol desde sesión
 // (usa el dato que ya cargó el JS de la página)
 // ─────────────────────────────────────────────
-window.poblarTopbarUsuario = function(sesion) {
+window.poblarTopbarUsuario = function(payload) {
 
-    const displayName = sesion.nombre || 'Usuario'; //muestra el nombre del usuario, no su user-credencial
-    const rol         = sesion.rol || '';
+    const displayName = payload.nombre || 'Usuario'; //muestra el nombre del usuario, no su user-credencial
+    const rol         = payload.rol || '';
 
     // Topbar derecho
     const topbarNombre = document.getElementById('topbarNombre');
     const topbarRol    = document.getElementById('topbarRol');
     const topbarAvatar = document.getElementById('topbarAvatar');
 
-    if (topbarNombre) topbarNombre.textContent = displayName;
-    if (topbarRol)    topbarRol.textContent    = rol;
-    if (topbarAvatar) topbarAvatar.textContent = displayName.charAt(0).toUpperCase();
+    topbarNombre.textContent = displayName;
+    topbarRol.textContent    = rol;
+    topbarAvatar.textContent = displayName.charAt(0).toUpperCase();
 
 };

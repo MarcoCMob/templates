@@ -1,5 +1,7 @@
 const BASE_URL = 'https://erp-marcodesarrolloweb.onrender.com/api';
 
+const token = localStorage.getItem("jwtToken");
+
 const detallesPedidoLlevar = new Map();
 const detallesPedidoDelivery = new Map();
 const detallesPedidoLocal = new Map();
@@ -7,7 +9,6 @@ const productosMap = new Map();
 
 let tipoPedidoActivo = "LOCAL";
 let MesaActiva = null;
-let rolUsuarioActivo = null; //variable para saber el rol de usuario sin volver a consultar la api
 
 // Datos de la última boleta generada (para el PDF)
 let ultimaBoleta = null;
@@ -178,47 +179,55 @@ const formatoMoneda = (valor) => `S/ ${Number(valor).toFixed(2)}`;
 // ──────────────────────────────────────────────
 // API CALLS
 // ──────────────────────────────────────────────
+
+
+const verificarAutenticacion = async (response) => {
+    if (response.status === 401 || response.status === 403) {
+        await cerrarSesion();
+        return false;
+    }
+    return true;
+};
+
 const obtenerCajaAbierta = async () => {
-
     try {
+        const response = await fetch(`${BASE_URL}/caja/obtenerCajaAbierta`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
 
-        const response = await fetch(`${BASE_URL}/caja/obtenerCajaAbierta`);
+        if (!(await verificarAutenticacion(response))) return null;
+
         const data = await response.json();
-
-        if (!response.ok) {
-            return null;
-        }
+        if (!response.ok) return null;
 
         return data;
-
-
     } catch (error) {
         console.log(error);
     }
-
-}
-
+};
 
 const cargarMesas = async () => {
     try {
-        const response = await fetch(`${BASE_URL}/venta/listarMesas`);
+        const response = await fetch(`${BASE_URL}/venta/listarMesas`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+
+        if (!(await verificarAutenticacion(response))) return;
 
         if (!response.ok) {
             console.log("Ocurrio un error");
         } else {
             const data = await response.json();
 
-            // Si no hay mesas, se oculta para todos
             if (data.length == 0) {
                 btnEliminarMesa.classList.add("hidden");
                 return;
-            }
-
-            //Solo mostrar si NO es Mesero ni Cajero (es decir, si es Administrador)
-            if (rolUsuarioActivo === "Mesero" || rolUsuarioActivo === "Cajero") {
-                btnEliminarMesa.classList.add("hidden");
-            } else {
-                btnEliminarMesa.classList.remove("hidden");
             }
 
             const mesaGridVenta = document.getElementById("mesa-grid");
@@ -242,10 +251,9 @@ const cargarMesas = async () => {
                 <span>${estadoMesa}</span>
                 `;
 
-                 detallesPedidoLocal.set(String(mesa.idMesa), new Map());
-                 mesaGridVenta.appendChild(botonMesa);
-
-             });
+                detallesPedidoLocal.set(String(mesa.idMesa), new Map());
+                mesaGridVenta.appendChild(botonMesa);
+            });
         }
     } catch (error) {
         console.log(error);
@@ -255,10 +263,14 @@ const cargarMesas = async () => {
 const insertarMesaBackend = async () => {
     try {
         const response = await fetch(`${BASE_URL}/venta/insertarMesa`, {
-            method: "POST", // Asumiendo que tu @PostMapping en Spring Boot no requiere body
-            headers: { "Content-Type": "application/json" }
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            }
         });
 
+        if (!(await verificarAutenticacion(response))) return false;
 
         if (!response.ok) {
             const data = await response.json();
@@ -277,10 +289,14 @@ const insertarMesaBackend = async () => {
 const eliminarMesaBackend = async () => {
     try {
         const response = await fetch(`${BASE_URL}/venta/eliminarMesa`, {
-            method: "DELETE", // Asumiendo @DeleteMapping en tu controlador
-            headers: { "Content-Type": "application/json" }
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            }
         });
 
+        if (!(await verificarAutenticacion(response))) return false;
 
         if (!response.ok) {
             const data = await response.json();
@@ -298,7 +314,14 @@ const eliminarMesaBackend = async () => {
 
 const cargarProductos = async () => {
     try {
-        const response = await fetch(`${BASE_URL}/catalogo/listarProductos`);
+        const response = await fetch(`${BASE_URL}/catalogo/listarProductos`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+
+        if (!(await verificarAutenticacion(response))) return;
 
         if (!response.ok) {
             console.log("Ocurrio un error");
@@ -306,7 +329,7 @@ const cargarProductos = async () => {
             const data = await response.json();
 
             const comboProductoPedido = document.getElementById("comboProductoPedido");
-            const comboProductoMesa = document.getElementById("comboProductoMesa"); // Capturamos el nuevo select
+            const comboProductoMesa = document.getElementById("comboProductoMesa");
 
             const optionDefault = `<option value="" disabled selected>Seleccione un producto</option>`;
             comboProductoPedido.innerHTML = optionDefault;
@@ -328,23 +351,22 @@ const cargarProductos = async () => {
     }
 };
 
-
 const validarDetallePedido = async (requestDetalle) => {
     try {
         const response = await fetch(`${BASE_URL}/venta/validarDetallePedido`, {
             method: "POST",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
             },
             body: JSON.stringify(requestDetalle)
         });
 
+        if (!(await verificarAutenticacion(response))) return false;
 
         if (!response.ok) {
             const data = await response.json();
-            data.mensajes.forEach(m => {
-                mostrarToast(m, "error");
-            });
+            data.mensajes.forEach(m => mostrarToast(m, "error"));
             return false;
         }
 
@@ -355,35 +377,44 @@ const validarDetallePedido = async (requestDetalle) => {
     }
 };
 
-// cobrarPedido ahora devuelve ResponseBoleta
 const cobrarPedido = async (requestPedido) => {
     try {
         const response = await fetch(`${BASE_URL}/venta/cobrarPedido`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
             body: JSON.stringify(requestPedido)
         });
+
+        if (!(await verificarAutenticacion(response))) return null;
+
         const data = await response.json();
         if (!response.ok) {
             (data.mensajes || []).forEach(m => mostrarToast(m, "error"));
             return null;
         }
         mostrarToast(data.mensaje || "Cobrado exitosamente", "success");
-        return data;        // ResponseBoleta
+        return data;
     } catch (error) {
         mostrarToast("Ocurrió un error inesperado", "error");
         return null;
     }
 };
 
-
 const ocuparMesa = async (requestPedido, idMesa) => {
     try {
         const response = await fetch(`${BASE_URL}/venta/ocuparMesa/${idMesa}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
             body: JSON.stringify(requestPedido)
         });
+
+        if (!(await verificarAutenticacion(response))) return false;
 
         if (!response.ok) {
             const data = await response.json().catch(() => null);
@@ -396,46 +427,54 @@ const ocuparMesa = async (requestPedido, idMesa) => {
         }
 
         return true;
-
     } catch (error) {
         mostrarToast("Ocurrió un error inesperado", "error");
         return false;
     }
 };
 
-// cobrarMesa ahora devuelve ResponseBoleta
 const cobrarMesa = async (idMesa, metodoPago) => {
     try {
         const response = await fetch(`${BASE_URL}/venta/cobrarMesa/${idMesa}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
             body: JSON.stringify({ metodoPago })
         });
+
+        if (!(await verificarAutenticacion(response))) return null;
+
         const data = await response.json();
         if (!response.ok) {
             (data.mensajes || []).forEach(m => mostrarToast(m, "error"));
             return null;
         }
         mostrarToast(data.mensaje || "Cobrado exitosamente", "success");
-        return data;        // ResponseBoleta
+        return data;
     } catch (error) {
         mostrarToast("Ocurrió un error inesperado", "error");
         return null;
     }
 };
 
-
 const agregarDetalleAlaMesa = async (idMesa, requestDetallePedido) => {
     try {
         const response = await fetch(`${BASE_URL}/venta/agregarDetallePedidoAlaMesa/${idMesa}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
             body: JSON.stringify(requestDetallePedido)
         });
+
+        if (!(await verificarAutenticacion(response))) return false;
+
         if (!response.ok) {
-            data.mensajes.forEach(m => {
-                mostrarToast(m, "error");
-            });
+            const data = await response.json();
+            (data.mensajes || []).forEach(m => mostrarToast(m, "error"));
             return false;
         }
         return true;
@@ -447,7 +486,14 @@ const agregarDetalleAlaMesa = async (idMesa, requestDetallePedido) => {
 
 const obtenerDetallesPedidoPorMesa = async (idMesa) => {
     try {
-        const response = await fetch(`${BASE_URL}/venta/detallePedidosPorMesa/${idMesa}`);
+        const response = await fetch(`${BASE_URL}/venta/detallePedidosPorMesa/${idMesa}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+
+        if (!(await verificarAutenticacion(response))) return [];
 
         if (!response.ok) {
             mostrarToast("Error al obtener los detalles de la mesa", "error");
@@ -626,7 +672,7 @@ const obtenerMapActivo = () => {
 
 const abrirModalAgregarPedido = () => {
     if (!modalAgregarPedido) return;
-    
+
     // Configurar título y botón
     const tituloModal = document.getElementById("modalAgregarPedidoTitulo") || document.querySelector("#modal-agregar-pedido .modal-header h3");
     if (tituloModal) {
@@ -655,15 +701,35 @@ const abrirModalAgregarPedido = () => {
 
 const cargarProductosModalPedido = async () => {
     try {
-        const response = await fetch(`${BASE_URL}/catalogo/listarProductos`);
+        const response = await fetch(`${BASE_URL}/catalogo/listarProductos`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+
+        if (!(await verificarAutenticacion(response))) return;
+
         if (!response.ok) {
             mostrarToast("Error al cargar productos", "error");
             return;
         }
         const data = await response.json();
-        productosListaGlobal = data;
-        poblarFiltroModalPedido(data);
-        renderTablaProductosModalPedido(data);
+
+        // ─── SINCRONIZACIÓN DE STOCK CON EL CARRITO ACTUAL ───
+        const mapActivo = obtenerMapActivo();
+        productosListaGlobal = data.map(producto => {
+            // Si el producto ya está en el carrito, le restamos esa cantidad al stock visual
+            if (mapActivo.has(producto.idProducto)) {
+                const cantidadEnCarrito = mapActivo.get(producto.idProducto).cantidad;
+                producto.stock = Math.max(0, producto.stock - cantidadEnCarrito);
+            }
+            return producto;
+        });
+        // ─────────────────────────────────────────────────────
+
+        poblarFiltroModalPedido(productosListaGlobal);
+        renderTablaProductosModalPedido(productosListaGlobal);
     } catch (error) {
         console.error(error);
         mostrarToast("Error de conexión", "error");
@@ -685,13 +751,13 @@ const poblarFiltroModalPedido = (productos) => {
 const obtenerProductosFiltradosModal = () => {
     const orden = document.getElementById('modalPedidoFiltroOrden').value;
     const catFiltro = document.getElementById('modalPedidoFiltroCategoria').value;
-    
+
     let lista = [...productosListaGlobal];
-    
+
     if (catFiltro) {
         lista = lista.filter(p => p.nombreCategoria === catFiltro);
     }
-    
+
     if (orden === 'az') {
         lista.sort((a, b) => a.nombreProducto.localeCompare(b.nombreProducto));
     } else if (orden === 'za') {
@@ -703,18 +769,18 @@ const obtenerProductosFiltradosModal = () => {
     } else if (orden === 'stock-asc') {
         lista.sort((a, b) => a.stock - b.stock);
     }
-    
+
     return lista;
 };
 
 const renderTablaProductosModalPedido = (productos) => {
     const tbody = document.getElementById('tbodyProductosModalPedido');
     tbody.innerHTML = '';
-    
+
     const mapActivo = obtenerMapActivo();
     productos.forEach(producto => {
         const cantidadAgregada = mapActivo.has(producto.idProducto) ? mapActivo.get(producto.idProducto).cantidad : 0;
-        
+
         let stockBadge = "";
         if (producto.stock === 0) {
             stockBadge = `<span class="badge badge-red" title="Sin stock">0</span>`;
@@ -749,12 +815,12 @@ const renderTablaProductosAgregadosModal = () => {
     const tbody = document.getElementById('tbodyPedidosAgregadosModal');
     const txtTotal = document.getElementById('txtTotalPedidoModal');
     const tfootTotal = document.getElementById('tfootTotalPedidoModal');
-    
+
     tbody.innerHTML = '';
     let total = 0;
-    
+
     const mapActivo = obtenerMapActivo();
-    
+
     mapActivo.forEach((detalle) => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -771,15 +837,15 @@ const renderTablaProductosAgregadosModal = () => {
         tbody.appendChild(row);
         total += detalle.total;
     });
-    
+
     txtTotal.textContent = formatoMoneda(total);
-    
+
     if (mapActivo.size > 0) {
         tfootTotal.classList.remove('hidden');
     } else {
         tfootTotal.classList.add('hidden');
     }
-    
+
     // Sincronizar con la tabla correspondiente en la vista
     if (tipoPedidoActivo === "LOCAL") {
         renderDetallesMesa();
@@ -817,35 +883,54 @@ if (modalPedidoFiltroCategoria) {
 
 // Delegación de eventos para botones en la tabla de productos
 const tbodyProductosModal = document.getElementById('tbodyProductosModalPedido');
-if (tbodyProductosModal) {
-    tbodyProductosModal.addEventListener('click', (e) => {
-        const btnAgregar = e.target.closest('.btn-modal-agregar-producto');
-        if (!btnAgregar) return;
-        
-        const idProducto = btnAgregar.dataset.id;
-        const nombreProducto = btnAgregar.dataset.nombre;
-        const precio = Number(btnAgregar.dataset.precio);
-        
-        const mapActivo = obtenerMapActivo();
-        
-        if (mapActivo.has(idProducto)) {
-            const detalle = mapActivo.get(idProducto);
-            detalle.cantidad += 1;
-            detalle.total = detalle.cantidad * detalle.precioUnitario;
-        } else {
-            mapActivo.set(idProducto, {
-                idProducto,
-                nombreProducto,
-                cantidad: 1,
-                precioUnitario: precio,
-                total: precio
-            });
-        }
-        
-        renderTablaProductosModalPedido(obtenerProductosFiltradosModal());
-        renderTablaProductosAgregadosModal();
+tbodyProductosModal.addEventListener('click', async (e) => {
+    const btnAgregar = e.target.closest('.btn-modal-agregar-producto');
+    if (!btnAgregar) return;
+
+    const idProducto = btnAgregar.dataset.id;
+    const nombreProducto = btnAgregar.dataset.nombre;
+    const precio = Number(btnAgregar.dataset.precio);
+
+    const mapActivo = obtenerMapActivo();
+
+    // 2. Calcular la cantidad total que se intenta solicitar
+    const cantidadActual = mapActivo.has(idProducto) ? mapActivo.get(idProducto).cantidad : 0;
+    const cantidadNueva = cantidadActual + 1;
+
+    // 3. Validar contra el Backend antes de modificar el mapa
+    // Tu función 'validarDetallePedido' ya maneja los Toasts de error y retorna false si falla
+    const esValido = await validarDetallePedido({
+        idProducto: idProducto,
+        cantidad: cantidadNueva
     });
-}
+
+    if (!esValido) return;
+
+    // ─── CÓDIGO NUEVO PARA RESTAR STOCK ───
+    const productoEnLista = productosListaGlobal.find(p => p.idProducto === idProducto);
+    if (productoEnLista) {
+        productoEnLista.stock -= 1;
+    }
+
+    // ──────────────────────────────────────
+    // 4. Si el backend da el visto bueno, se actualiza el carrito local
+    if (mapActivo.has(idProducto)) {
+        const detalle = mapActivo.get(idProducto);
+        detalle.cantidad = cantidadNueva;
+        detalle.total = detalle.cantidad * detalle.precioUnitario;
+    } else {
+        mapActivo.set(idProducto, {
+            idProducto,
+            nombreProducto,
+            cantidad: 1,
+            precioUnitario: precio,
+            total: precio
+        });
+    }
+
+    renderTablaProductosModalPedido(obtenerProductosFiltradosModal());
+    renderTablaProductosAgregadosModal();
+});
 
 // Delegación de eventos para quitar productos
 const tbodyAgregadosModal = document.getElementById('tbodyPedidosAgregadosModal');
@@ -853,11 +938,23 @@ if (tbodyAgregadosModal) {
     tbodyAgregadosModal.addEventListener('click', (e) => {
         const btnQuitar = e.target.closest('.btn-modal-quitar-producto');
         if (!btnQuitar) return;
-        
+
         const idProducto = btnQuitar.dataset.id;
         const mapActivo = obtenerMapActivo();
-        mapActivo.delete(idProducto);
         
+        // ─── CÓDIGO NUEVO: OBTENER CANTIDAD Y DEVOLVER STOCK ───
+        const detalle = mapActivo.get(idProducto);
+        const cantidadA_Devolver = detalle ? detalle.cantidad : 0;
+
+        mapActivo.delete(idProducto); // Borra del carrito
+
+        // Devolver el stock al producto en la lista global
+        const productoEnLista = productosListaGlobal.find(p => p.idProducto === idProducto);
+        if (productoEnLista) {
+            productoEnLista.stock += cantidadA_Devolver;
+        }
+        // ──────────────────────────────────────────────────────
+
         renderTablaProductosModalPedido(obtenerProductosFiltradosModal());
         renderTablaProductosAgregadosModal();
     });
@@ -1118,14 +1215,6 @@ mesaGridVenta.addEventListener("click", () => {
 
     if (estadoMesa === "OCUPADO") {
 
-        // Ocultar el boton Cobrar si el usuario es Mesero
-        const btnCobrarModal = document.getElementById("btnMesaOcupadaCobrar");
-        if (rolUsuarioActivo === "Mesero") {
-            btnCobrarModal.classList.add("hidden");
-        } else {
-            btnCobrarModal.classList.remove("hidden");
-        }
-
         divModalMesaOcupada.classList.remove("hidden");
 
     } else {
@@ -1283,35 +1372,16 @@ btnCancelarCobro.addEventListener("click", () => {
     MesaActiva = null;
 });
 
-const verificarSesionActiva = async () => {
+const cargarSecciones = (payload) => {
 
-    try {
+    if (payload.rol === "ADMIN") {
 
-        const response = await fetch(`${BASE_URL}/usuario/sesionActiva`);
-        const data = await response.json();
+        document.getElementById("btnIrInventario").classList.remove("hidden");
 
-        if (!response.ok) {
-            return null;
-        } else {
-            return data;
-        }
-
-    } catch (error) {
-        console.log(error);
-    }
-
-}
-
-
-const cargarSecciones = (sesionActiva) => {
-
-    rolUsuarioActivo = sesionActiva.rol;
-
-    if (sesionActiva.rol === "Administrador") {
         return;
     }
 
-    if (sesionActiva.rol === "Mesero") {
+    if (payload.rol === "MESERO") {
         document.getElementById("navSeccionCaja").classList.add("hidden");
         document.getElementById("navSeccionInventario").classList.add("hidden");
         document.getElementById("navSeccionCatalogo").classList.add("hidden");
@@ -1324,9 +1394,11 @@ const cargarSecciones = (sesionActiva) => {
         document.getElementById("btnTabEspera").classList.add("hidden");
         document.getElementById("btnAgregarMesa").classList.add("hidden");
         document.getElementById("btnEliminarMesa").classList.add("hidden");
+
+        document.getElementById("btnMesaOcupadaCobrar").classList.add("hidden");
     }
 
-    if (sesionActiva.rol === "Cajero") {
+    if (payload.rol === "CAJERO") {
         document.getElementById("navSeccionInventario").classList.add("hidden");
         document.getElementById("navSeccionCatalogo").classList.add("hidden");
         document.getElementById("navSeccionUsuario").classList.add("hidden");
@@ -1338,54 +1410,62 @@ const cargarSecciones = (sesionActiva) => {
 }
 
 
-document.getElementById("btnCerrarSesion").addEventListener("click", async (e) => {
-    e.preventDefault();
-    if(await cerrarSesion()){
-        window.location.href = 'index.html';
-        return;
-    }
+const btnCerrarSesion = document.getElementById("btnCerrarSesion");
+
+btnCerrarSesion.addEventListener("click", async () => {
+    btnCerrarSesion.disabled = true;
+    await cerrarSesion();
 });
 
 const cerrarSesion = async () => {
     try {
 
-        const response = await fetch(`${BASE_URL}/usuario/cerrarSesion`, {
-            method: 'PUT'
+        const response = await fetch(`${BASE_URL}/auth/logout`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
         });
-
-        if (!response.ok) {
-            return false;
-        }
-
-        return true;
 
     } catch (error) {
         console.log(error);
+    } finally {
+        localStorage.removeItem('jwtToken');
+        window.location.href = 'index.html';
     }
 }
+
+const obtenerPayload = (token) => {
+
+    try {
+
+        return JSON.parse(atob(token.split('.')[1]));
+
+    } catch (error) {
+
+        localStorage.removeItem('jwtToken');
+        window.location.href = 'index.html';
+        return;
+
+    }
+
+};
 
 document.addEventListener("DOMContentLoaded", async (e) => {
 
     e.preventDefault();
-    const sesionActiva = await verificarSesionActiva();
 
-    if (sesionActiva == null) {
+    if (!token) {
         window.location.href = 'index.html';
-        return;
     }
+
+    const payload = obtenerPayload(token);
+
     if (typeof window.poblarTopbarUsuario === 'function') {
-        window.poblarTopbarUsuario(sesionActiva);
+        window.poblarTopbarUsuario(payload);
     }
 
-    const infoUsuarioElem = document.getElementById("infoUsuario");
-    const infoRolElem = document.getElementById("infoRol");
-    const infoAvatarElem = document.getElementById("infoAvatar");
-
-    if (infoUsuarioElem) infoUsuarioElem.textContent = sesionActiva.nombre;
-    if (infoRolElem) infoRolElem.textContent = sesionActiva.rol;
-    if (infoAvatarElem) infoAvatarElem.textContent = sesionActiva.rol.charAt(0).toUpperCase();
-
-    cargarSecciones(sesionActiva);
+    cargarSecciones(payload);
 
     const cajaAbierta = await obtenerCajaAbierta();
 
@@ -1396,11 +1476,9 @@ document.addEventListener("DOMContentLoaded", async (e) => {
         renderTablaEspera();
     } else {
 
-        let html = "caja.html";
         let mensaje = "Ir a caja";
 
-        if (sesionActiva.rol === "Mesero" && await cerrarSesion()) {
-            html = "index.html";
+        if (payload.rol === "Mesero") {
             mensaje = "Logear como cajero";
         }
 
@@ -1409,8 +1487,15 @@ document.addEventListener("DOMContentLoaded", async (e) => {
         const cajaCerradaModal = document.getElementById("caja-cerrada-modal");
         const cajaCerradaIr = document.getElementById("caja-cerrada-ir");
         cajaCerradaModal.classList.remove("hidden");
-        cajaCerradaIr.addEventListener("click", () => {
-            window.location.href = html;
+
+        cajaCerradaIr.addEventListener("click", async () => {
+
+            if (payload.rol === "Mesero") {
+                await cerrarSesion();
+            }
+
+            window.location.href = 'caja.html';
+
         });
     }
 });

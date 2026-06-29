@@ -21,7 +21,7 @@ const autenticarUsuario = async (requestUsuario) => {
 
   try {
 
-    const response = await fetch(`${BASE_URL}/usuario/autenticar`, {
+    const response = await fetch(`${BASE_URL}/auth/iniciarSesion`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -29,14 +29,27 @@ const autenticarUsuario = async (requestUsuario) => {
       body: JSON.stringify(requestUsuario)
     });
 
+    const data = await response.json();
+    
+    if(response.status === 401){
+      mostrarToast("Acceso denegado", "error");
+      return;
+    }
+
+    if(response.status === 403){
+      mostrarToast("Permisos insuficientes", "error");
+      return;
+    }
+
     if (!response.ok) {
-      const data = await response.json();
       data.mensajes.forEach(m => {
         mostrarToast(m, "error");
       });
-    } else {
-      window.location.href = 'venta.html';
+      return;
     }
+
+    localStorage.setItem('jwtToken', data.token);
+    window.location.href = 'venta.html';
 
   } catch (error) {
     console.log(error);
@@ -44,10 +57,12 @@ const autenticarUsuario = async (requestUsuario) => {
 
 }
 
-
 const btnIngresar = document.getElementById("btnIngresar");
-btnIngresar.addEventListener("click", (e) => {
+btnIngresar.addEventListener("click", async (e) => {
   e.preventDefault();
+
+  btnIngresar.disabled = true;
+  btnIngresar.textContent = "Validando credenciales...";
 
   const txtUsuario = document.getElementById("txtUsuario");
   const txtContraseña = document.getElementById("txtContraseña");
@@ -57,17 +72,22 @@ btnIngresar.addEventListener("click", (e) => {
     "contrasena": txtContraseña.value
   }
 
-  autenticarUsuario(requestUsuario);
+  await autenticarUsuario(requestUsuario);
+
+  btnIngresar.textContent = "Ingresar";
+  btnIngresar.disabled = false;
 
 });
 
-const initLogin = () => {
+document.addEventListener('DOMContentLoaded', () => {
+
   if (window.lucide) {
     window.lucide.createIcons();
   }
-};
 
-document.addEventListener('DOMContentLoaded', initLogin);
+  localStorage.removeItem("jwtToken");
+
+});
 
 
 

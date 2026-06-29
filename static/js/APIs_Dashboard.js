@@ -1,56 +1,108 @@
 const BASE_URL = 'https://erp-marcodesarrolloweb.onrender.com/api';
 
-// 1. Función para verificar si hay un usuario logueado en el backend
-const verificarSesionActiva = async () => {
-    try {
-        const response = await fetch(`${BASE_URL}/usuario/sesionActiva`);
-        if (!response.ok) return null;
-        return await response.json();
-    } catch (error) {
-        console.error("Error al verificar la sesión:", error);
-        return null;
+const token = localStorage.getItem("jwtToken");
+
+const toastContainer = document.getElementById('toast-container');
+const mostrarToast = (mensaje, tipo = 'info') => {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${tipo}`;
+    toast.textContent = mensaje;
+    toastContainer.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('toast-hide');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+};
+
+// -------------------- AUTH --------------------
+const verificarAutenticacion = async (response) => {
+    if (response.status === 401 || response.status === 403) {
+        await cerrarSesion();
+        return false;
     }
-}
+    return true;
+};
 
-// 2. Función para ocultar secciones del menú según el rol
-const cargarSecciones = (sesionActiva) => {
-    if (sesionActiva.rol === "Administrador") return;
-
-    const ocultarMenus = (urls) => {
-        urls.forEach(url => {
-            const el = document.querySelector(`a[href='${url}']`);
-            if (el) el.classList.add("hidden");
+// -------------------- ESTADÍSTICAS --------------------
+const cargarEstadisticas = async () => {
+    try {
+        const response = await fetch(`${BASE_URL}/dashboard/estadisticas`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
         });
-    }
 
-    if (sesionActiva.rol === "Mesero") {
-        ocultarMenus(['caja.html', 'inventario.html', 'catalogo/catalogoProducto.html', 'usuario.html', 'configuracion.html']);
-    }
+        if (!(await verificarAutenticacion(response))) return;
 
-    if (sesionActiva.rol === "Cajero") {
-        ocultarMenus(['inventario.html', 'catalogo/catalogoProducto.html', 'usuario.html', 'configuracion.html']);
-    }
-}
-
-// 3. Función para cerrar sesión
-const cerrarSesion = async (e) => {
-    e.preventDefault();
-    try {
-        const response = await fetch(`${BASE_URL}/usuario/cerrarSesion`, { method: 'PUT' });
-        if (response.ok) {
-            window.location.href = 'index.html';
-        } else {
-            console.error("Ocurrió un error al cerrar sesión");
+        if (!response.ok) {
+            console.error("Error al obtener estadísticas del servidor");
+            return;
         }
-    } catch (error) {
-        console.error(error);
-    }
-}
 
-// 4. Función para dibujar las gráficas de Chart.js
+        const data = await response.json();
+
+        document.querySelector('.text-success').textContent =
+            `S/ ${Number(data.ventasHoy).toFixed(2)}`;
+
+        document.querySelectorAll('.stat-card h4')[1].textContent = data.pedidosTotales;
+        document.querySelector('.text-warning').textContent = `${data.mesasOcupadas}/6`;
+        document.querySelectorAll('.stat-card h4')[3].textContent = data.productosTotales;
+
+        renderizarGraficas(data);
+
+    } catch (error) {
+        console.error("Error al cargar estadísticas:", error);
+    }
+};
+
+// -------------------- EXCEL --------------------
+const descargarExcelMensual = async () => {
+    try {
+        const mes = document.getElementById("selectMes")?.value;
+
+        let anio = document.getElementById("selectAnio")?.value;
+
+        if (!anio) {
+            anio = new Date().getFullYear(); // fallback seguro
+        }
+
+        if (!mes || !anio) {
+            console.error("Mes o año inválido");
+            return;
+        }
+
+        const response = await fetch(
+            `${BASE_URL}/dashboard/pedidosMensuales?mes=${mes}&anio=${anio}`,
+            {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            }
+        );
+
+        if (!(await verificarAutenticacion(response))) return;
+
+        if (!response.ok) {
+            throw new Error("Error al obtener los pedidos");
+        }
+
+        const pedidos = await response.json();
+
+        await generarExcel(pedidos, mes, anio);
+
+    } catch (error) {
+        console.error("Error al descargar excel mensual:", error);
+
+        mostrarToast("Ocurrió un error al generar el reporte", "error");
+    }
+};
+
+// -------------------- GRÁFICOS --------------------
 const renderizarGraficas = (data) => {
-    // Gráfico de Barras (Ingresos vs Egresos)
     const ctxCaja = document.getElementById('graficoCaja').getContext('2d');
+
     new Chart(ctxCaja, {
         type: 'bar',
         data: {
@@ -59,12 +111,8 @@ const renderizarGraficas = (data) => {
                 label: 'Soles (S/)',
                 data: [data.ingresos, data.egresos],
                 backgroundColor: [
-                    'rgba(34, 197, 94, 0.6)', // Verde 
-                    'rgba(239, 68, 68, 0.6)'  // Rojo 
-                ],
-                borderColor: [
-                    'rgb(34, 197, 94)',
-                    'rgb(239, 68, 68)'
+                    'rgba(34, 197, 94, 0.6)',
+                    'rgba(239, 68, 68, 0.6)'
                 ],
                 borderWidth: 1,
                 borderRadius: 6
@@ -74,26 +122,28 @@ const renderizarGraficas = (data) => {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false } // Oculta la leyenda superior para verse más limpio
+                legend: { display: false }
             }
         }
     });
 
-    // Gráfico de Dona (Tipos de Pedido)
     const ctxPedidos = document.getElementById('graficoPedidos').getContext('2d');
+
     new Chart(ctxPedidos, {
         type: 'doughnut',
         data: {
-            labels: ['Local (Mesa)', 'Para Llevar', 'Delivery'],
+            labels: ['Local', 'Para Llevar', 'Delivery'],
             datasets: [{
-                data: [data.pedidosLocal, data.pedidosLlevar, data.pedidosDelivery],
-                backgroundColor: [
-                    'rgba(59, 130, 246, 0.7)', // Azul
-                    'rgba(249, 115, 22, 0.7)', // Naranja brand
-                    'rgba(168, 85, 247, 0.7)'  // Morado
+                data: [
+                    data.pedidosLocal,
+                    data.pedidosLlevar,
+                    data.pedidosDelivery
                 ],
-                borderWidth: 0,
-                hoverOffset: 4
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.7)',
+                    'rgba(249, 115, 22, 0.7)',
+                    'rgba(168, 85, 247, 0.7)'
+                ]
             }]
         },
         options: {
@@ -101,248 +151,133 @@ const renderizarGraficas = (data) => {
             maintainAspectRatio: false
         }
     });
-}
+};
 
+// -------------------- ROLES --------------------
+const cargarSecciones = (payload) => {
 
-const cargarEstadisticas = async () => {
-    try {
-
-        const response = await fetch(`${BASE_URL}/dashboard-api/estadisticas`);
-        if (response.ok) {
-            const data = await response.json();
-
-            document.querySelector('.text-success').textContent = `S/ ${Number(data.ventasHoy).toFixed(2)}`;
-            document.querySelectorAll('.stat-card h4')[1].textContent = data.pedidosTotales;
-            document.querySelector('.text-warning').textContent = `${data.mesasOcupadas}/6`;
-            document.querySelectorAll('.stat-card h4')[3].textContent = data.productosTotales;
-            
-            renderizarGraficas(data);
-        } else {
-            console.error("Error al obtener estadísticas del servidor");
-        }
-    } catch (error) {
-        console.error("Error al cargar estadísticas:", error);
+    if (payload.rol === "MESERO") {
+        ["navSeccionCaja",
+            "navSeccionInventario",
+            "navSeccionCatalogo",
+            "navSeccionUsuario",
+            "navSeccionConfiguracion"
+        ].forEach(id => document.getElementById(id)?.classList.add("hidden"));
     }
-}
 
-document.getElementById("btnCerrarSesion").addEventListener("click", async (e) => {
-    e.preventDefault();
-    try {
-        const response = await fetch(`${BASE_URL}/usuario/cerrarSesion`, { method: 'PUT' });
-        if (!response.ok) {
-            console.log("Ocurrio un error");
-        } else {
-            window.location.href = '../index.html';
-        }
-    } catch (error) {
-        console.log(error);
+    if (payload.rol === "CAJERO") {
+        ["navSeccionInventario",
+            "navSeccionCatalogo",
+            "navSeccionUsuario",
+            "navSeccionConfiguracion"
+        ].forEach(id => document.getElementById(id)?.classList.add("hidden"));
     }
-});
+};
 
-document.addEventListener("DOMContentLoaded", async (e) => {
-    e.preventDefault();
+// -------------------- LOGOUT --------------------
+const cerrarSesion = async () => {
+    try {
+        await fetch(`${BASE_URL}/auth/logout`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+    } catch (e) {
+        console.log(e);
+    } finally {
+        localStorage.removeItem("jwtToken");
+        window.location.href = "index.html";
+    }
+};
 
-    const sesionActiva = await verificarSesionActiva();
+// -------------------- PAYLOAD --------------------
+const obtenerPayload = (token) => {
+    try {
+        return JSON.parse(atob(token.split('.')[1]));
+    } catch (e) {
+        localStorage.removeItem("jwtToken");
+        window.location.href = "index.html";
+    }
+};
 
-    if (sesionActiva == null) {
+// -------------------- INIT --------------------
+document.addEventListener("DOMContentLoaded", async () => {
+
+    if (!token) {
         window.location.href = 'index.html';
         return;
     }
+
+    const payload = obtenerPayload(token);
+    if (!payload) return;
+
     if (typeof window.poblarTopbarUsuario === 'function') {
-        window.poblarTopbarUsuario(sesionActiva);
+        window.poblarTopbarUsuario(payload);
     }
 
-    const userInfoP = document.querySelector(".user-meta p");
-    const userInfoSpan = document.querySelector(".user-meta span");
-    const userAvatar = document.querySelector(".user-avatar");
-
-    if (userInfoP) userInfoP.textContent = sesionActiva.nombre;
-    if (userInfoSpan) userInfoSpan.textContent = sesionActiva.rol;
-    if (userAvatar) userAvatar.textContent = sesionActiva.rol.charAt(0).toUpperCase();
-
-    cargarSecciones(sesionActiva);
-
+    cargarSecciones(payload);
     cargarEstadisticas();
-    // btnHISTORIAL
-    function cargarAnios() {
 
-        const select = document.getElementById("selectAnio");
+    const select = document.getElementById("selectAnio");
+    const year = new Date().getFullYear();
 
-        const anioActual = new Date().getFullYear();
-
-        for(let i = anioActual; i >= 2020; i--) {
-
-            const option = document.createElement("option");
-
-            option.value = i;
-            option.textContent = i;
-
-            select.appendChild(option);
-        }
+    for (let i = year; i >= 2020; i--) {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = i;
+        select.appendChild(opt);
     }
-    document
-        .getElementById("btnHistorialMensual")
+
+    document.getElementById("btnHistorialMensual")
         .addEventListener("click", () => {
-
-            document
-                .getElementById("modalHistorial")
-                .classList.toggle("hidden");
+            document.getElementById("modalHistorial").classList.toggle("hidden");
         });
 
-    document
-        .getElementById("btnDescargarExcel")
-        .addEventListener("click", descargarExcelMensual);
+    document.getElementById("btnDescargarExcel")
+        .addEventListener("click", descargarExcelMensual); 
 
-    // generacion del excel
-    async function descargarExcelMensual() {
+});
 
-        const mes = document.getElementById("selectMes").value;
-        const anio = document.getElementById("selectAnio").value;
+// -------------------- EXCEL GENERATOR --------------------
+async function generarExcel(pedidos, mes, anio) {
 
-        const response = await fetch(
-            `${BASE_URL}/dashboard-api/pedidosMensuales?mes=${mes}&anio=${anio}`
-        );
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Pedidos");
 
-        if (!response.ok) {
-            throw new Error("Error al obtener los pedidos");
-        }
+    worksheet.columns = [
+        { header: "Fecha", key: "fecha", width: 18 },
+        { header: "Tipo Pedido", key: "tipo", width: 20 },
+        { header: "Método Pago", key: "metodo", width: 20 },
+        { header: "Total (S/)", key: "total", width: 15 }
+    ];
 
-        const pedidos = await response.json();
+    worksheet.mergeCells("A1:D1");
 
-        generarExcel(pedidos, mes, anio);
-    }
+    const titulo = worksheet.getCell("A1");
+    titulo.value = `Reporte de Pedidos - ${mes}/${anio}`;
+    titulo.font = { bold: true, size: 16 };
+    titulo.alignment = { horizontal: "center" };
 
-    async function generarExcel(pedidos, mes, anio) {
+    let totalGeneral = 0;
 
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet("Pedidos");
+    pedidos.forEach(p => {
+        const total = Number(p.total);
+        totalGeneral += total;
 
-        // Anchos de columna
-        worksheet.columns = [
-            { header: "Fecha", key: "fecha", width: 18 },
-            { header: "Tipo Pedido", key: "tipo", width: 20 },
-            { header: "Método Pago", key: "metodo", width: 20 },
-            { header: "Total (S/)", key: "total", width: 15 }
-        ];
-
-        // Título
-        worksheet.mergeCells("A1:D1");
-
-        const titulo = worksheet.getCell("A1");
-
-        titulo.value = `Reporte de Pedidos - ${mes}/${anio}`;
-        titulo.font = {
-            bold: true,
-            size: 16
-        };
-        titulo.alignment = {
-            horizontal: "center"
-        };
-
-        // Encabezados (fila 3)
-        const headerRow = worksheet.getRow(3);
-
-        headerRow.values = [
-            "Fecha",
-            "Tipo Pedido",
-            "Método Pago",
-            "Total (S/)"
-        ];
-
-        headerRow.eachCell((cell) => {
-
-            cell.font = {
-                bold: true,
-                color: {
-                    argb: "000000"
-                }
-            };
-
-            cell.fill = {
-                type: "pattern",
-                pattern: "solid",
-                fgColor: {
-                    argb: "FFFF00"
-                }
-            };
-
-            cell.border = {
-                top: { style: "thin" },
-                left: { style: "thin" },
-                bottom: { style: "thin" },
-                right: { style: "thin" }
-            };
-
-            cell.alignment = {
-                horizontal: "center"
-            };
-        });
-
-        // Datos
-        let totalGeneral = 0;
-
-        pedidos.forEach((p) => {
-
-            const total = Number(p.total);
-
-            totalGeneral += total;
-
-            const row = worksheet.addRow([
-                p.fecha_pedido,
-                p.tipo_pedido,
-                p.metodo_pago,
-                total
-            ]);
-
-            row.eachCell((cell) => {
-                cell.border = {
-                    top: { style: "thin" },
-                    left: { style: "thin" },
-                    bottom: { style: "thin" },
-                    right: { style: "thin" }
-                };
-            });
-
-            row.getCell(4).numFmt = '"S/" #,##0.00';
-        });
-
-        // Total General
-        const totalRow = worksheet.addRow([
-            "",
-            "",
-            "TOTAL GENERAL",
-            totalGeneral
+        const row = worksheet.addRow([
+            p.fecha_pedido,
+            p.tipo_pedido,
+            p.metodo_pago,
+            total
         ]);
 
-        totalRow.eachCell((cell) => {
+        row.getCell(4).numFmt = '"S/" #,##0.00';
+    });
 
-            cell.font = {
-                bold: true
-            };
+    worksheet.addRow(["", "", "TOTAL", totalGeneral]);
 
-            cell.border = {
-                top: { style: "thin" },
-                left: { style: "thin" },
-                bottom: { style: "thin" },
-                right: { style: "thin" }
-            };
-        });
+    const buffer = await workbook.xlsx.writeBuffer();
 
-        totalRow.getCell(4).numFmt = '"S/" #,##0.00';
-
-        // Generar archivo
-        const buffer = await workbook.xlsx.writeBuffer();
-
-        saveAs(
-            new Blob([
-                buffer
-            ]),
-            `Pedidos_${mes}_${anio}.xlsx`
-        );
-    }   
-
-    cargarSecciones(sesionActiva);
-
-    cargarEstadisticas();
-    cargarAnios();
-});
+    saveAs(new Blob([buffer]), `Pedidos_${mes}_${anio}.xlsx`);
+}

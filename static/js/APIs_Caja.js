@@ -1,6 +1,7 @@
 const BASE_URL = 'https://erp-marcodesarrolloweb.onrender.com/api';
 let cajaAbiertActual = null;
 
+const token = localStorage.getItem("jwtToken");
 
 const divCajaTurnoCerrado = document.getElementById("divCajaTurnoCerrado");
 const divCajaTurnoAbierto = document.getElementById("divCajaTurnoAbierto");
@@ -60,7 +61,7 @@ function agregarMovimientoAlDOM(mov) {
     <strong>${mov.tipo === "INGRESO" ? "+" : "-"} S/ ${Number(mov.monto).toFixed(2)}</strong>
     `;
     lista.appendChild(item);
-    
+
     // Aplicar filtros después de agregar un nuevo movimiento
     if (typeof aplicarFiltros === 'function') {
         aplicarFiltros();
@@ -68,9 +69,25 @@ function agregarMovimientoAlDOM(mov) {
 }
 
 
+const verificarAutenticacion = async (response) => {
+    if (response.status === 401 || response.status === 403) {
+        await cerrarSesion();
+        return false;
+    }
+    return true;
+};
+
 const obtenerCaja = async (idCaja) => {
     try {
-        const response = await fetch(`${BASE_URL}/caja/${idCaja}`);
+        const response = await fetch(`${BASE_URL}/caja/${idCaja}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+
+        if (!(await verificarAutenticacion(response))) return null;
+
         if (!response.ok) {
             console.error("Error al obtener caja:", await response.json());
             return null;
@@ -82,12 +99,19 @@ const obtenerCaja = async (idCaja) => {
     }
 };
 
-
 const obtenerMovimientos = async (idCaja) => {
     try {
-        const response = await fetch(`${BASE_URL}/caja/movimientos/${idCaja}`);
+        const response = await fetch(`${BASE_URL}/caja/movimientos/${idCaja}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+
+        if (!(await verificarAutenticacion(response))) return [];
+
         if (!response.ok) {
-            mostrarToast("Error al obtener movimientos:", await response.json(), "error")
+            mostrarToast("Error al obtener movimientos:", await response.json(), "error");
             return [];
         }
         return await response.json();
@@ -97,19 +121,23 @@ const obtenerMovimientos = async (idCaja) => {
     }
 };
 
-
 const aperturarCaja = async (montoInicial) => {
     try {
         const response = await fetch(`${BASE_URL}/caja/aperturarCaja`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
             body: JSON.stringify({ montoInicial })
         });
+
+        if (!(await verificarAutenticacion(response))) return null;
 
         const data = await response.json();
 
         if (!response.ok) {
-            data.mensajes.forEach(m => {
+            (data.mensajes || []).forEach(m => {
                 mostrarToast(m, "error");
             });
             return null;
@@ -122,17 +150,21 @@ const aperturarCaja = async (montoInicial) => {
     }
 };
 
-
 const cerrarCaja = async (idCaja) => {
     try {
         const response = await fetch(`${BASE_URL}/caja/cerrarCaja/${idCaja}`, {
-            method: "PUT"
+            method: "PUT",
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
         });
+
+        if (!(await verificarAutenticacion(response))) return null;
 
         const data = await response.json();
 
         if (!response.ok) {
-            data.mensajes.forEach(m => {
+            (data.mensajes || []).forEach(m => {
                 mostrarToast(m, "error");
             });
             return null;
@@ -145,19 +177,23 @@ const cerrarCaja = async (idCaja) => {
     }
 };
 
-
 const registrarMovimiento = async (idCaja, requestMovimiento) => {
     try {
         const response = await fetch(`${BASE_URL}/caja/registrarMovimiento/${idCaja}`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
             body: JSON.stringify(requestMovimiento)
         });
+
+        if (!(await verificarAutenticacion(response))) return null;
 
         const data = await response.json();
 
         if (!response.ok) {
-            data.mensajes.forEach(m => {
+            (data.mensajes || []).forEach(m => {
                 mostrarToast(m, "error");
             });
             return null;
@@ -172,44 +208,42 @@ const registrarMovimiento = async (idCaja, requestMovimiento) => {
 };
 
 const obtenerUltimaCajaCerrada = async () => {
-
     try {
+        const response = await fetch(`${BASE_URL}/caja/obtenerUltimaCajaCerrada`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
 
-        const response = await fetch(`${BASE_URL}/caja/obtenerUltimaCajaCerrada`);
-        const data = await response.json();
+        if (!(await verificarAutenticacion(response))) return null;
+        if (!response.ok) return null;
 
-        if (!response.ok) {
-            return null;
-        }
-
-        return data;
-
-
+        return await response.json();
     } catch (error) {
         console.log(error);
+        return null;
     }
-
-}
+};
 
 const obtenerCajaAbierta = async () => {
-
     try {
+        const response = await fetch(`${BASE_URL}/caja/obtenerCajaAbierta`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
 
-        const response = await fetch(`${BASE_URL}/caja/obtenerCajaAbierta`);
-        const data = await response.json();
+        if (!(await verificarAutenticacion(response))) return null;
+        if (!response.ok) return null;
 
-        if (!response.ok) {
-            return null;
-        }
-
-        return data;
-
-
+        return await response.json();
     } catch (error) {
         console.log(error);
+        return null;
     }
-
-}
+};
 
 
 const cargarEstadoInicial = async () => {
@@ -232,11 +266,14 @@ const cargarEstadoInicial = async () => {
 const btnAbrirTurno = document.getElementById("btnAbrirTurno");
 btnAbrirTurno.addEventListener("click", async (e) => {
     e.preventDefault();
+    btnAbrirTurno.disabled = true;
 
     const txtMontoInicial = document.getElementById("txtMontoInicial");
     const montoInicial = parseFloat(txtMontoInicial.value);
 
     const caja = await aperturarCaja(montoInicial);
+    btnAbrirTurno.disabled = false;
+
     if (!caja) return;
 
     cajaAbiertActual = caja;
@@ -249,8 +286,11 @@ btnAbrirTurno.addEventListener("click", async (e) => {
 const btnCerrarTurno = document.getElementById("btnCerrarTurno");
 btnCerrarTurno.addEventListener("click", async (e) => {
     e.preventDefault();
+    btnCerrarTurno.disabled = true;
 
     const resultado = await cerrarCaja(cajaAbiertActual.idCaja);
+    btnCerrarTurno.disabled = false;
+
     if (!resultado) return;
 
     mostrarTurnoCerrado(resultado);
@@ -265,6 +305,7 @@ btnCerrarTurno.addEventListener("click", async (e) => {
 
 btnRegistrarMovimiento.addEventListener("click", async (e) => {
     e.preventDefault();
+    btnRegistrarMovimiento.disabled = true;
 
     const concepto = document.getElementById("txtConcepto").value;
     const tipo = document.getElementById("TipoMovimiento").value;   // INGRESO | EGRESO
@@ -274,6 +315,8 @@ btnRegistrarMovimiento.addEventListener("click", async (e) => {
     const requestMovimiento = { concepto, tipo, metodo, monto };
 
     const movimiento = await registrarMovimiento(cajaAbiertActual.idCaja, requestMovimiento);
+    btnRegistrarMovimiento.disabled = false;
+
     if (!movimiento) return;
 
     agregarMovimientoAlDOM(movimiento);
@@ -283,69 +326,67 @@ btnRegistrarMovimiento.addEventListener("click", async (e) => {
         document.querySelector(".stat-card h4.text-success").textContent =
             `S/ ${Number(caja.montoActual).toFixed(2)}`;
     }
+
+    document.getElementById("txtConcepto").value = "";
+    document.getElementById("txtMonto").value = "";
 });
 
-const verificarSesionActiva = async () => {
+const cargarSecciones = (payload) => {
 
-    try {
-
-        const response = await fetch(`${BASE_URL}/usuario/sesionActiva`);
-        const data = await response.json();
-
-        if (!response.ok) {
-            return null;
-        } else {
-            return data;
-        }
-
-    } catch (error) {
-        console.log(error);
-    }
-
-}
-
-const cargarSecciones = (sesionActiva) => {
-
-    if (sesionActiva.rol === "Administrador") {
+    if (payload.rol === "ADMIN") {
         return;
     }
 
-    if (sesionActiva.rol === "Mesero") {
+    if (payload.rol === "MESERO") {
         document.getElementById("navSeccionCaja").classList.add("hidden");
         document.getElementById("navSeccionInventario").classList.add("hidden");
         document.getElementById("navSeccionCatalogo").classList.add("hidden");
         document.getElementById("navSeccionUsuario").classList.add("hidden");
         document.getElementById("navSeccionConfiguracion").classList.add("hidden");
+
+        // Ocultar tabs de Para Llevar y Delivery: el mesero solo atiende salon
+        document.getElementById("btnTabLlevar").classList.add("hidden");
+        document.getElementById("btnTabDelivery").classList.add("hidden");
+        document.getElementById("btnTabEspera").classList.add("hidden");
+        document.getElementById("btnAgregarMesa").classList.add("hidden");
+        document.getElementById("btnEliminarMesa").classList.add("hidden");
     }
 
-    if (sesionActiva.rol === "Cajero") {
+    if (payload.rol === "CAJERO") {
         document.getElementById("navSeccionInventario").classList.add("hidden");
         document.getElementById("navSeccionCatalogo").classList.add("hidden");
         document.getElementById("navSeccionUsuario").classList.add("hidden");
         document.getElementById("navSeccionConfiguracion").classList.add("hidden");
+        document.getElementById("btnAgregarMesa").classList.add("hidden");
+        document.getElementById("btnEliminarMesa").classList.add("hidden");
     }
 
 }
 
-document.getElementById("btnCerrarSesion").addEventListener("click", async (e) => {
-    e.preventDefault();
+const btnCerrarSesion = document.getElementById("btnCerrarSesion");
 
+btnCerrarSesion.addEventListener("click", async () => {
+    btnCerrarSesion.disabled = true;
+    await cerrarSesion();
+});
+
+const cerrarSesion = async () => {
     try {
 
-        const response = await fetch(`https://erp-marcodesarrolloweb.onrender.com/api/usuario/cerrarSesion`, {
-            method: 'PUT'
+        const response = await fetch(`${BASE_URL}/auth/logout`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
         });
-
-        if (!response.ok) {
-            console.log("Ocurrio un error");
-        } else {
-            window.location.href = 'index.html';
-        }
 
     } catch (error) {
         console.log(error);
+    } finally {
+        localStorage.removeItem('jwtToken');
+        window.location.href = 'index.html';
     }
-});
+}
 
 // ============================================
 // BÚSQUEDA Y FILTRADO DE MOVIMIENTOS
@@ -356,22 +397,22 @@ const aplicarFiltros = () => {
     const filtroTipo = document.getElementById("filtroTipo");
     const filtroMetodo = document.getElementById("filtroMetodo");
     const noResultsMessage = document.getElementById("noResultsMessage");
-    
+
     if (!txtBuscarMovimiento || !filtroTipo || !filtroMetodo) return;
-    
+
     const textoBusqueda = txtBuscarMovimiento.value.toLowerCase().trim();
     const tipoSeleccionado = filtroTipo.value;
     const metodoSeleccionado = filtroMetodo.value;
-    
+
     const movimientos = document.querySelectorAll("#divListMovimientos .list-item");
     let visibles = 0;
-    
+
     movimientos.forEach(movimiento => {
         const concepto = movimiento.querySelector(".title")?.textContent?.toLowerCase() || "";
         const badges = movimiento.querySelectorAll(".badge");
         let metodo = "";
         let tipo = "";
-        
+
         badges.forEach(badge => {
             const texto = badge.textContent.trim().toUpperCase();
             if (["EFECTIVO", "TARJETA", "YAPE"].includes(texto)) {
@@ -380,18 +421,18 @@ const aplicarFiltros = () => {
                 tipo = texto;
             }
         });
-        
+
         const monto = movimiento.querySelector("strong")?.textContent?.toLowerCase() || "";
-        
-        const coincideTexto = !textoBusqueda || 
-            concepto.includes(textoBusqueda) || 
-            metodo.toLowerCase().includes(textoBusqueda) || 
-            tipo.toLowerCase().includes(textoBusqueda) || 
+
+        const coincideTexto = !textoBusqueda ||
+            concepto.includes(textoBusqueda) ||
+            metodo.toLowerCase().includes(textoBusqueda) ||
+            tipo.toLowerCase().includes(textoBusqueda) ||
             monto.includes(textoBusqueda);
-        
+
         const coincideTipo = !tipoSeleccionado || tipo === tipoSeleccionado;
         const coincideMetodo = !metodoSeleccionado || metodo === metodoSeleccionado;
-        
+
         if (coincideTexto && coincideTipo && coincideMetodo) {
             movimiento.classList.remove("hidden");
             visibles++;
@@ -399,7 +440,7 @@ const aplicarFiltros = () => {
             movimiento.classList.add("hidden");
         }
     });
-    
+
     if (noResultsMessage) {
         if (visibles === 0 && movimientos.length > 0) {
             noResultsMessage.classList.remove("hidden");
@@ -409,37 +450,44 @@ const aplicarFiltros = () => {
     }
 };
 
-document.addEventListener("DOMContentLoaded", async (e) => {
+const obtenerPayload = (token) => {
 
+    try {
+
+        return JSON.parse(atob(token.split('.')[1]));
+
+    } catch (error) {
+
+        localStorage.removeItem('jwtToken');
+        window.location.href = 'index.html';
+        return;
+
+    }
+
+};
+
+document.addEventListener("DOMContentLoaded", async (e) => {
     e.preventDefault();
 
-    const sesionActiva = await verificarSesionActiva();
-
-    if (sesionActiva == null) {
+    if (!token) {
         window.location.href = 'index.html';
         return;
     }
+
+    const payload = obtenerPayload(token);
+    if (!payload) return;
+
     if (typeof window.poblarTopbarUsuario === 'function') {
-        window.poblarTopbarUsuario(sesionActiva);
+        window.poblarTopbarUsuario(payload);
     }
 
-    const infoUsuarioElem = document.getElementById("infoUsuario");
-    const infoRolElem = document.getElementById("infoRol");
-    const infoAvatarElem = document.getElementById("infoAvatar");
-
-    if (infoUsuarioElem) infoUsuarioElem.textContent = sesionActiva.nombre;
-    if (infoRolElem) infoRolElem.textContent = sesionActiva.rol;
-    if (infoAvatarElem) infoAvatarElem.textContent = sesionActiva.rol.charAt(0).toUpperCase();
-
-    cargarSecciones(sesionActiva);
-
+    cargarSecciones(payload);
     cargarEstadoInicial();
-    
-    // Event listeners del buscador
+
     const txtBuscarMovimiento = document.getElementById("txtBuscarMovimiento");
     const filtroTipo = document.getElementById("filtroTipo");
     const filtroMetodo = document.getElementById("filtroMetodo");
-    
+
     if (txtBuscarMovimiento) txtBuscarMovimiento.addEventListener("input", aplicarFiltros);
     if (filtroTipo) filtroTipo.addEventListener("change", aplicarFiltros);
     if (filtroMetodo) filtroMetodo.addEventListener("change", aplicarFiltros);

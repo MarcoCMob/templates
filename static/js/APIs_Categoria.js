@@ -1,5 +1,7 @@
 const BASE_URL = 'https://erp-marcodesarrolloweb.onrender.com/api';
 
+const token = localStorage.getItem("jwtToken");
+
 const tbodyCategoria = document.getElementById("tbodyCategoria");
 const formCategoria = document.getElementById("form-cat-categorias");
 const txtNombreCategoria = document.getElementById("txtNombreCategoria");
@@ -93,9 +95,28 @@ const aplicarFiltros = () => {
     renderizarTablaCategoria(obtenerCategoriasFiltradas());
 };
 
+filtroOrdenCategoria.addEventListener('change', aplicarFiltros);
+
+
+const verificarAutenticacion = async (response) => {
+    if (response.status === 401 || response.status === 403) {
+        await cerrarSesion();
+        return false;
+    }
+    return true;
+};
+
 const cargarTablaCategoria = async () => {
     try {
-        const response = await fetch(`${BASE_URL}/catalogo/listarCategorias`);
+        const response = await fetch(`${BASE_URL}/catalogo/listarCategorias`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+
+        if (!(await verificarAutenticacion(response))) return;
+
         if (!response.ok) {
             mostrarToast("Ocurrio un error", "error");
         } else {
@@ -108,17 +129,20 @@ const cargarTablaCategoria = async () => {
     }
 };
 
-filtroOrdenCategoria.addEventListener('change', aplicarFiltros);
-
 /* ---- CRUD ---- */
 
 const insertarCategoria = async (requestCategoria) => {
     try {
         const response = await fetch(`${BASE_URL}/catalogo/crearCategoria`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
             body: JSON.stringify(requestCategoria)
         });
+
+        if (!(await verificarAutenticacion(response))) return;
 
         const data = await response.json();
 
@@ -138,9 +162,14 @@ const editarCategoria = async (requestCategoria, idCategoria) => {
     try {
         const response = await fetch(`${BASE_URL}/catalogo/editarCategoria/${idCategoria}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
             body: JSON.stringify(requestCategoria)
         });
+
+        if (!(await verificarAutenticacion(response))) return null;
 
         const data = await response.json();
 
@@ -162,8 +191,13 @@ const eliminarCategoria = async (idCategoria) => {
         const URL = `${BASE_URL}/catalogo/eliminarCategoria/${idCategoria}`;
         const response = await fetch(URL, {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            }
         });
+
+        if (!(await verificarAutenticacion(response))) return false;
 
         if (!response.ok) {
             mostrarToast("No se pudo eliminar la categoría", "error");
@@ -265,70 +299,94 @@ if (btnCancelarCategoria) {
     });
 }
 
-const verificarSesionActiva = async () => {
-    try {
-        const response = await fetch(`${BASE_URL}/usuario/sesionActiva`);
-        const data = await response.json();
-        if (!response.ok) return null;
-        return data;
-    } catch (error) {
-        console.log(error);
+
+const cargarSecciones = (payload) => {
+
+    if (payload.rol === "ADMIN") {
+        return;
     }
-};
 
-const cargarSecciones = (sesionActiva) => {
-    if (sesionActiva.rol === "Administrador") return;
-
-    if (sesionActiva.rol === "Mesero") {
+    if (payload.rol === "MESERO") {
         document.getElementById("navSeccionCaja").classList.add("hidden");
         document.getElementById("navSeccionInventario").classList.add("hidden");
         document.getElementById("navSeccionCatalogo").classList.add("hidden");
         document.getElementById("navSeccionUsuario").classList.add("hidden");
         document.getElementById("navSeccionConfiguracion").classList.add("hidden");
+
+        // Ocultar tabs de Para Llevar y Delivery: el mesero solo atiende salon
+        document.getElementById("btnTabLlevar").classList.add("hidden");
+        document.getElementById("btnTabDelivery").classList.add("hidden");
+        document.getElementById("btnTabEspera").classList.add("hidden");
+        document.getElementById("btnAgregarMesa").classList.add("hidden");
+        document.getElementById("btnEliminarMesa").classList.add("hidden");
     }
 
-    if (sesionActiva.rol === "Cajero") {
+    if (payload.rol === "CAJERO") {
         document.getElementById("navSeccionInventario").classList.add("hidden");
         document.getElementById("navSeccionCatalogo").classList.add("hidden");
         document.getElementById("navSeccionUsuario").classList.add("hidden");
         document.getElementById("navSeccionConfiguracion").classList.add("hidden");
+        document.getElementById("btnAgregarMesa").classList.add("hidden");
+        document.getElementById("btnEliminarMesa").classList.add("hidden");
     }
-};
 
-document.getElementById("btnCerrarSesion").addEventListener("click", async (e) => {
-    e.preventDefault();
-    try {
-        const response = await fetch(`${BASE_URL}/usuario/cerrarSesion`, { method: 'PUT' });
-        if (!response.ok) {
-            console.log("Ocurrio un error");
-        } else {
-            window.location.href = '../index.html';
-        }
-    } catch (error) {
-        console.log(error);
-    }
+}
+
+btnCerrarSesion.addEventListener("click", async () => {
+    btnCerrarSesion.disabled = true;
+    await cerrarSesion();
 });
 
-document.addEventListener("DOMContentLoaded", async (e) => {
-    const sesionActiva = await verificarSesionActiva();
+const cerrarSesion = async () => {
+    try {
 
-    if (sesionActiva == null) {
+        const response = await fetch(`${BASE_URL}/auth/logout`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+
+    } catch (error) {
+        console.log(error);
+    } finally {
+        localStorage.removeItem('jwtToken');
+        window.location.href = '../index.html';
+    }
+}
+
+const obtenerPayload = (token) => {
+
+    try {
+
+        return JSON.parse(atob(token.split('.')[1]));
+
+    } catch (error) {
+
+        localStorage.removeItem('jwtToken');
+        window.location.href = '../index.html';
+        return;
+
+    }
+
+};
+
+document.addEventListener("DOMContentLoaded", async (e) => {
+    e.preventDefault();
+
+    if (!token) {
         window.location.href = '../index.html';
         return;
     }
+
+    const payload = obtenerPayload(token);
+    if (!payload) return;
+
     if (typeof window.poblarTopbarUsuario === 'function') {
-        window.poblarTopbarUsuario(sesionActiva);
+        window.poblarTopbarUsuario(payload);
     }
 
-    const infoUsuarioElem = document.getElementById("infoUsuario");
-    const infoRolElem = document.getElementById("infoRol");
-    const infoAvatarElem = document.getElementById("infoAvatar");
-
-    if (infoUsuarioElem) infoUsuarioElem.textContent = sesionActiva.nombre;
-    if (infoRolElem) infoRolElem.textContent = sesionActiva.rol;
-    if (infoAvatarElem) infoAvatarElem.textContent = sesionActiva.rol.charAt(0).toUpperCase();
-
-    cargarSecciones(sesionActiva);
+    cargarSecciones(payload);
 
     await cargarTablaCategoria();
 });
