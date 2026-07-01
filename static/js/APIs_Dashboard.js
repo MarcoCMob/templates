@@ -23,6 +23,77 @@ const verificarAutenticacion = async (response) => {
     return true;
 };
 
+// -------------------- PEDIDOS EN ESPERA --------------------
+const cargarPedidosEnEsperaDash = async () => {
+    try {
+        const response = await fetch(`${BASE_URL}/dashboard/pedidosEnEspera`, {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (!(await verificarAutenticacion(response))) return;
+
+        if (!response.ok) return;
+
+        const pedidos = await response.json();
+
+        const txtVacia = document.getElementById('txtEsperaDashVacia');
+        const tabla = document.getElementById('tablaEsperaDash');
+        const tbody = document.getElementById('tbodyEsperaDash');
+        const badge = document.getElementById('badgeConteoEspera');
+
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+
+        if (pedidos.length === 0) {
+            if (txtVacia) txtVacia.style.display = '';
+            if (tabla) tabla.style.display = 'none';
+            if (badge) badge.style.display = 'none';
+            return;
+        }
+
+        if (txtVacia) txtVacia.style.display = 'none';
+        if (tabla) tabla.style.display = '';
+        if (badge) {
+            badge.textContent = pedidos.length;
+            badge.style.display = '';
+        }
+
+        const formatoMoneda = (n) => `S/ ${Number(n || 0).toFixed(2)}`;
+
+        const formatearFechaHoraISO = (isoStr) => {
+            if (!isoStr) return '';
+            try {
+                const date = new Date(isoStr);
+                const pad = (n) => String(n).padStart(2, '0');
+                return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+            } catch (e) { return isoStr; }
+        };
+
+        pedidos.forEach(p => {
+            const tipoBadgeClass = p.tipoPedido === 'DELIVERY' ? 'badge-blue' : 'badge-orange';
+            const tipoLabel = p.tipoPedido === 'DELIVERY' ? 'Delivery' : 'Para Llevar';
+            const productosTexto = (p.detalles || [])
+                .map(d => `${d.cantidad}x ${d.nombreProducto}`)
+                .join(', ');
+
+            const fila = document.createElement('tr');
+            fila.innerHTML = `
+                <td><span class="badge ${tipoBadgeClass}">${tipoLabel}</span></td>
+                <td style="max-width:260px;white-space:normal;font-size:13px;">${productosTexto || '—'}</td>
+                <td><strong>${formatoMoneda(p.total)}</strong></td>
+                <td style="font-size:13px;white-space:nowrap;">${formatearFechaHoraISO(p.fechaHora)}</td>
+                <td style="font-size:13px;">${p.nombreUsuarioCreador || '—'}</td>
+            `;
+            tbody.appendChild(fila);
+        });
+
+    } catch (error) {
+        console.error('Error al cargar pedidos en espera:', error);
+    }
+};
+
 // -------------------- ESTADÍSTICAS --------------------
 const cargarEstadisticas = async () => {
     try {
@@ -218,6 +289,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     cargarSecciones(payload);
     cargarEstadisticas();
+    cargarPedidosEnEsperaDash();
+
+    document.getElementById('btnRefrescarEspera')?.addEventListener('click', cargarPedidosEnEsperaDash);
 
     const select = document.getElementById("selectAnio");
     const year = new Date().getFullYear();

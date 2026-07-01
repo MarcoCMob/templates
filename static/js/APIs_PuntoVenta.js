@@ -1044,13 +1044,12 @@ btnConfirmarCompraPedido.addEventListener("click", async (e) => {
         }
         mapActivo.clear();
         renderDetallesPedido();
-        // Si el cobro vino desde un pedido en espera, eliminarlo de la lista
+        // Si el cobro vino desde un pedido en espera, eliminarlo del servidor
         const esperaIdStr = modalCobroPedido.dataset.esperaId;
         if (esperaIdStr) {
-            const esperaId = Number(esperaIdStr);
-            const idx = pedidosEnEspera.findIndex(p => p.id === esperaId);
+            await eliminarPedidoEnEsperaAPI(esperaIdStr);
+            const idx = pedidosEnEspera.findIndex(p => p.id === esperaIdStr);
             if (idx !== -1) pedidosEnEspera.splice(idx, 1);
-            guardarEsperaEnSession();
             delete modalCobroPedido.dataset.esperaId;
             renderTablaEspera();
         }
@@ -1472,8 +1471,7 @@ document.addEventListener("DOMContentLoaded", async (e) => {
     if (cajaAbierta) {
         cargarMesas();
         cargarProductos();
-        cargarEsperaDeSession();
-        renderTablaEspera();
+        await cargarPedidosEnEspera();
     } else {
 
         let mensaje = "Ir a caja";
@@ -1504,53 +1502,138 @@ document.addEventListener("DOMContentLoaded", async (e) => {
 
 // ──────────────────────────────────────────────
 // LISTA DE ESPERA (LLEVAR / DELIVERY)
+// Los pedidos se persisten en base de datos via API para que cualquier
+// usuario autenticado, desde cualquier dispositivo, pueda visualizarlos.
 // ──────────────────────────────────────────────
 
-// Estructura de cada pedido en espera:
-// { id, tipoPedido, detalles: Map(idProducto -> detalle), fechaHora }
-// Los pedidos se persisten en sessionStorage para sobrevivir la navegación entre módulos.
+// Espejo local de los pedidos en espera cargados desde el servidor.
+// Cada elemento: { id: UUID (string), tipoPedido, detalles: Map(idProducto -> detalle), fechaHora, nombreUsuarioCreador }
 const pedidosEnEspera = [];
-let contadorEspera = 0;
 
-// Variables para preservar id y fechaHora al editar un pedido en espera existente
+// Si el usuario está editando un pedido en espera existente, guardamos su UUID aquí
+// para hacer un PUT en vez de un POST al re-enviarlo.
 let pedidoEnEdicionId = null;
-let pedidoEnEdicionFechaHora = null;
-let pedidoEnEdicionIdx = null;   // posición original en el array, para reinsertar en el mismo lugar
 
-// ── Persistencia en sessionStorage ──
-const ESPERA_KEY = 'erp_pedidos_espera';
-const CONTADOR_KEY = 'erp_espera_contador';
+// ── Helpers de API ──
 
-const guardarEsperaEnSession = () => {
-    // Maps no son serializables directamente; convertimos a array de pares
-    const serializable = pedidosEnEspera.map(p => ({
-        id: p.id,
-        tipoPedido: p.tipoPedido,
-        fechaHora: p.fechaHora,
-        detalles: Array.from(p.detalles.entries())
-    }));
-    sessionStorage.setItem(ESPERA_KEY, JSON.stringify(serializable));
-    sessionStorage.setItem(CONTADOR_KEY, String(contadorEspera));
-};
-
-const cargarEsperaDeSession = () => {
+const cargarPedidosEnEspera = async () => {
     try {
-        const raw = sessionStorage.getItem(ESPERA_KEY);
-        const cnt = sessionStorage.getItem(CONTADOR_KEY);
-        if (cnt) contadorEspera = Number(cnt);
-        if (!raw) return;
-        const parsed = JSON.parse(raw);
-        parsed.forEach(p => {
-            const detallesMap = new Map(p.detalles);
+        const response = await fetch(`${BASE_URL}/venta/espera`, {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (!(await verificarAutenticacion(response))) return;
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        // Reconstruir el array local desde la respuesta del servidor
+        pedidosEnEspera.length = 0;
+        data.forEach(p => {
+            const detallesMap = new Map();
+            (p.detalles || []).forEach(d => {
+                detallesMap.set(d.idProducto, {
+                    idProducto: d.idProducto,
+                    nombreProducto: d.nombreProducto,
+                    precioUnitario: Number(d.precioUnitario),
+                    cantidad: d.cantidad,
+                    total: Number(d.total)
+                });
+            });
             pedidosEnEspera.push({
-                id: p.id,
+                id: p.idPedidoEspera,
                 tipoPedido: p.tipoPedido,
-                fechaHora: p.fechaHora,
-                detalles: detallesMap
+                detalles: detallesMap,
+                fechaHora: formatearFechaHoraISO(p.fechaHora),
+                nombreUsuarioCreador: p.nombreUsuarioCreador
             });
         });
+
+        renderTablaEspera();
     } catch (e) {
-        console.warn('No se pudo restaurar la lista de espera desde sessionStorage:', e);
+        console.warn('Error al cargar pedidos en espera:', e);
+    }
+};
+
+const crearPedidoEnEsperaAPI = async (requestBody) => {
+    try {
+        const response = await fetch(`${BASE_URL}/venta/espera`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!(await verificarAutenticacion(response))) return null;
+
+        if (!response.ok) {
+            const data = await response.json().catch(() => null);
+            (data?.mensajes || []).forEach(m => mostrarToast(m, 'error'));
+            return null;
+        }
+
+        return await response.json();
+    } catch (e) {
+        mostrarToast('Error al guardar el pedido en espera', 'error');
+        return null;
+    }
+};
+
+const actualizarPedidoEnEsperaAPI = async (idPedidoEspera, requestBody) => {
+    try {
+        const response = await fetch(`${BASE_URL}/venta/espera/${idPedidoEspera}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!(await verificarAutenticacion(response))) return null;
+
+        if (!response.ok) {
+            const data = await response.json().catch(() => null);
+            (data?.mensajes || []).forEach(m => mostrarToast(m, 'error'));
+            return null;
+        }
+
+        return await response.json();
+    } catch (e) {
+        mostrarToast('Error al actualizar el pedido en espera', 'error');
+        return null;
+    }
+};
+
+const eliminarPedidoEnEsperaAPI = async (idPedidoEspera) => {
+    try {
+        const response = await fetch(`${BASE_URL}/venta/espera/${idPedidoEspera}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (!(await verificarAutenticacion(response))) return false;
+
+        return response.ok;
+    } catch (e) {
+        mostrarToast('Error al eliminar el pedido en espera', 'error');
+        return false;
+    }
+};
+
+// ── Formateo de fecha ISO desde LocalDateTime del backend ──
+const formatearFechaHoraISO = (isoStr) => {
+    if (!isoStr) return '';
+    try {
+        const date = new Date(isoStr);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    } catch (e) {
+        return isoStr;
     }
 };
 
@@ -1582,7 +1665,6 @@ const renderTablaEspera = () => {
     if (txtVacia) txtVacia.classList.add('hidden');
     if (tabla) tabla.classList.remove('hidden');
 
-    // Ordenados de más antiguo (index 0) a más reciente (último)
     pedidosEnEspera.forEach((pedido) => {
         const tipoBadgeClass = pedido.tipoPedido === 'DELIVERY' ? 'badge-blue' : 'badge-orange';
         const tipoLabel = pedido.tipoPedido === 'DELIVERY' ? 'Delivery' : 'Para Llevar';
@@ -1593,9 +1675,13 @@ const renderTablaEspera = () => {
 
         const total = calcularTotalDetalles(pedido.detalles);
 
+        const creadorHtml = pedido.nombreUsuarioCreador
+            ? `<span class="muted" style="font-size:12px;display:block;">${pedido.nombreUsuarioCreador}</span>`
+            : '';
+
         const fila = document.createElement('tr');
         fila.innerHTML = `
-            <td><span class="badge ${tipoBadgeClass}">${tipoLabel}</span></td>
+            <td><span class="badge ${tipoBadgeClass}">${tipoLabel}</span>${creadorHtml}</td>
             <td style="max-width:260px;white-space:normal;font-size:13px;">${productosTexto}</td>
             <td><strong>${formatoMoneda(total)}</strong></td>
             <td style="font-size:13px;white-space:nowrap;">${pedido.fechaHora}</td>
@@ -1620,7 +1706,7 @@ const renderTablaEspera = () => {
 // Botón "Enviar a Espera"
 const btnEnviarAEspera = document.getElementById('btnEnviarAEspera');
 if (btnEnviarAEspera) {
-    btnEnviarAEspera.addEventListener('click', () => {
+    btnEnviarAEspera.addEventListener('click', async () => {
         const mapActivo = tipoPedidoActivo === 'DELIVERY' ? detallesPedidoDelivery : detallesPedidoLlevar;
 
         if (mapActivo.size === 0) {
@@ -1628,33 +1714,35 @@ if (btnEnviarAEspera) {
             return;
         }
 
-        // Clonar los detalles para que el pedido en espera sea independiente
-        const detallesClonados = new Map();
-        mapActivo.forEach((v, k) => detallesClonados.set(k, { ...v }));
+        btnEnviarAEspera.disabled = true;
 
-        // Si viene de editar un pedido existente, conservar su id y fecha/hora originales
-        const esEdicion = pedidoEnEdicionId !== null;
-        const nuevoPedido = {
-            id: esEdicion ? pedidoEnEdicionId : ++contadorEspera,
+        const requestBody = {
             tipoPedido: tipoPedidoActivo,
-            detalles: detallesClonados,
-            fechaHora: esEdicion ? pedidoEnEdicionFechaHora : formatearFechaHora(new Date())
+            detalles: Array.from(mapActivo.values()).map(d => ({
+                idProducto: d.idProducto,
+                cantidad: d.cantidad
+            }))
         };
 
-        // Si es edición de un pedido existente, reinsertar en su posición original; si es nuevo, al final
-        if (esEdicion && pedidoEnEdicionIdx !== null) {
-            pedidosEnEspera.splice(pedidoEnEdicionIdx, 0, nuevoPedido);
+        let resultado = null;
+
+        if (pedidoEnEdicionId !== null) {
+            // Actualizar pedido existente en el servidor
+            resultado = await actualizarPedidoEnEsperaAPI(pedidoEnEdicionId, requestBody);
+            pedidoEnEdicionId = null;
         } else {
-            pedidosEnEspera.push(nuevoPedido);
+            // Crear nuevo pedido en el servidor
+            resultado = await crearPedidoEnEsperaAPI(requestBody);
         }
-        guardarEsperaEnSession();
+
+        btnEnviarAEspera.disabled = false;
+
+        if (!resultado) return;
+
+        // Limpiar el mapa activo y refrescar desde el servidor
         mapActivo.clear();
-        // Limpiar estado de edición tras re-enviar
-        pedidoEnEdicionId = null;
-        pedidoEnEdicionFechaHora = null;
-        pedidoEnEdicionIdx = null;
         renderDetallesPedido();
-        renderTablaEspera();
+        await cargarPedidosEnEspera();
         mostrarToast(`Pedido ${tipoPedidoActivo === 'DELIVERY' ? 'Delivery' : 'Para Llevar'} enviado a la lista de espera.`, 'success');
     });
 }
@@ -1662,33 +1750,29 @@ if (btnEnviarAEspera) {
 // Delegación de eventos en la tabla de espera
 const tbodyEspera = document.getElementById('tbodyEspera');
 if (tbodyEspera) {
-    tbodyEspera.addEventListener('click', (e) => {
+    tbodyEspera.addEventListener('click', async (e) => {
         const btnAgregar = e.target.closest('.btn-agregar-espera');
         const btnCobrar = e.target.closest('.btn-cobrar-espera');
         const btnCancelar = e.target.closest('.btn-cancelar-espera');
 
         if (btnAgregar) {
-            const id = Number(btnAgregar.dataset.id);
+            const id = btnAgregar.dataset.id;
             const pedido = pedidosEnEspera.find(p => p.id === id);
             if (!pedido) return;
 
-            // Guardar el id, fechaHora y posición originales para preservarlos al re-enviar a espera
+            // Guardar el UUID para el PUT posterior cuando se re-envíe a espera
             pedidoEnEdicionId = pedido.id;
-            pedidoEnEdicionFechaHora = pedido.fechaHora;
 
             // Restaurar los detalles del pedido en espera al mapa activo según el tipo
             tipoPedidoActivo = pedido.tipoPedido;
             const mapDestino = tipoPedidoActivo === 'DELIVERY' ? detallesPedidoDelivery : detallesPedidoLlevar;
 
-            // Copiar detalles existentes del pedido en espera al mapa activo
             mapDestino.clear();
             pedido.detalles.forEach((v, k) => mapDestino.set(k, { ...v }));
 
-            // Quitar el pedido de la lista de espera guardando su posición original
+            // Quitar del array local (el registro sigue en el servidor, se actualizará con PUT)
             const idx = pedidosEnEspera.findIndex(p => p.id === id);
-            pedidoEnEdicionIdx = idx !== -1 ? idx : null;
             if (idx !== -1) pedidosEnEspera.splice(idx, 1);
-            guardarEsperaEnSession();
             renderTablaEspera();
 
             // Navegar al tab correspondiente
@@ -1701,7 +1785,7 @@ if (tbodyEspera) {
         }
 
         if (btnCobrar) {
-            const id = Number(btnCobrar.dataset.id);
+            const id = btnCobrar.dataset.id;
             const pedido = pedidosEnEspera.find(p => p.id === id);
             if (!pedido) return;
 
@@ -1711,11 +1795,9 @@ if (tbodyEspera) {
             mapDestino.clear();
             pedido.detalles.forEach((v, k) => mapDestino.set(k, { ...v }));
 
-            // Calcular total
             let total = 0;
             mapDestino.forEach(d => total += d.total);
 
-            // Abrir modal de cobro
             const tipoPedidoLabelEl = document.getElementById('tipo-pedido-label');
             const modalPedidoTotalMontoEl = document.getElementById('modal-pedido-total-monto');
             const comboMetodoPagoModalEl = document.getElementById('comboMetodoPagoModal');
@@ -1727,7 +1809,6 @@ if (tbodyEspera) {
             if (tipoPedidoLabelEl) tipoPedidoLabelEl.textContent = `Pedido - ${pedido.tipoPedido}`;
             if (modalPedidoTotalMontoEl) modalPedidoTotalMontoEl.textContent = formatoMoneda(total);
             if (comboMetodoPagoModalEl) comboMetodoPagoModalEl.selectedIndex = 0;
-            // Mostrar u ocultar bloque efectivo según la opción activa al abrir
             if (efectivoBlockModalEl) {
                 if (comboMetodoPagoModalEl && comboMetodoPagoModalEl.value === 'EFECTIVO') {
                     efectivoBlockModalEl.classList.remove('hidden');
@@ -1739,16 +1820,16 @@ if (tbodyEspera) {
             if (vueltoModalEl) vueltoModalEl.textContent = formatoMoneda(0);
             if (modalCobroPedidoEl) modalCobroPedidoEl.classList.remove('hidden');
 
-            // Marcar qué pedido en espera estamos cobrando para limpiarlo al confirmar
+            // Marcar el UUID del pedido en espera para eliminarlo tras confirmar el cobro
             modalCobroPedidoEl.dataset.esperaId = id;
         }
 
         if (btnCancelar) {
-            const id = Number(btnCancelar.dataset.id);
-            const idx = pedidosEnEspera.findIndex(p => p.id === id);
-            if (idx !== -1) {
-                pedidosEnEspera.splice(idx, 1);
-                guardarEsperaEnSession();
+            const id = btnCancelar.dataset.id;
+            const ok = await eliminarPedidoEnEsperaAPI(id);
+            if (ok) {
+                const idx = pedidosEnEspera.findIndex(p => p.id === id);
+                if (idx !== -1) pedidosEnEspera.splice(idx, 1);
                 renderTablaEspera();
                 mostrarToast('Pedido cancelado y eliminado de la lista de espera.', 'info');
             }
@@ -1759,16 +1840,18 @@ if (tbodyEspera) {
 // Tab "En Espera"
 const btnTabEspera = document.getElementById('btnTabEspera');
 if (btnTabEspera) {
-    btnTabEspera.addEventListener('click', () => {
+    btnTabEspera.addEventListener('click', async () => {
         tipoPedidoActivo = null;
         divPedidoRegistro.classList.add('hidden');
         divMesaPedidos.classList.add('hidden');
-        renderTablaEspera();
 
-        // Activar visualmente el tab
+        // Siempre recarga desde el servidor al abrir el tab para tener datos frescos
+        await cargarPedidosEnEspera();
+
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         btnTabEspera.classList.add('active');
         document.getElementById('pos-espera').classList.add('active');
     });
+
 }
